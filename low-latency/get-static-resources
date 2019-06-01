@@ -129,8 +129,7 @@ nifi/images/iconLoading.gif
 #/nifi-api/flow/controller/bulletins
 #/nifi-api/flow/cluster/summary
 
-rm -rf static
-mkdir static
+mkdir -p static
 cd static
 
 mkdir -p nifi
