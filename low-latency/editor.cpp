@@ -57,6 +57,9 @@ void respond_static(const std::shared_ptr<HttpServer::Response> &response, const
     {"png", "image/png"},
     {"svg", "image/svg+xml"},
     {"gif", "image/gif"},
+    {"ico", "image/x-icon"},
+    {"ttf", "font/ttf"},
+    {"woff2", "font/woff2"}
   };
 
   if (stat(filename.c_str(), &ist) == 0) {
@@ -256,7 +259,27 @@ int main() {
               << doc;
   };
 
+  server.resource["^/nifi-api/access/kerberos$"]["POST"] = [](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request) {
+    std::string doc = R"()";
+    *response << "HTTP/1.1 409 Conflict\r\n"
+              << "Content-Type: text/plain\r\n"
+              << "Content-Length: " << doc.length() << "\r\n\r\n"
+              << doc;
+  };
+
+  server.resource["^/nifi-api/access/oidc/exchange$"]["POST"] = [](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request) {
+    std::string doc = R"()";
+    *response << "HTTP/1.1 409 Conflict\r\n"
+              << "Content-Type: text/plain\r\n"
+              << "Content-Length: " << doc.length() << "\r\n\r\n"
+              << doc;
+  };
+
   server.default_resource["GET"] = [](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request) {
+    respond_notfound(response, request);
+  };
+
+  server.default_resource["POST"] = [](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request) {
     respond_notfound(response, request);
   };
 
