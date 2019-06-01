@@ -1,0 +1,148 @@
+#!/bin/bash
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+# Get static web resources from a nifi instance
+
+nifi_url="http://localhost:8080"
+nifi_resources="
+nifi/assets/reset.css
+nifi/css/nf-canvas-all.css
+nifi/css/message-pane.css
+nifi/css/nf-common-ui.css
+nifi/js/codemirror/lib/codemirror.css
+nifi/js/codemirror/addon/hint/show-hint.css
+nifi/js/jquery/nfeditor/jquery.nfeditor.css
+nifi/assets/url-search-params/build/url-search-params.js
+nifi/js/codemirror/lib/codemirror-compressed.js
+nifi/js/jquery/nfeditor/languages/nfel.css
+nifi/assets/d3/build/d3.min.js
+nifi/assets/d3-selection-multi/build/d3-selection-multi.min.js
+nifi/js/jquery/tabbs/jquery.tabbs.css
+nifi/assets/jquery/dist/jquery.min.js
+nifi/assets/jquery-ui-dist/jquery-ui.min.js
+nifi/js/jquery/combo/jquery.combo.css
+nifi/js/jquery/jquery.base64.js
+nifi/js/jquery/propertytable/jquery.propertytable.css
+nifi/js/jquery/jquery.center.js
+nifi/js/jquery/jquery.ellipsis.js
+nifi/js/jquery/tagcloud/jquery.tagcloud.css
+nifi/js/jquery/jquery.each.js
+nifi/js/jquery/modal/jquery.modal.css
+nifi/js/jquery/jquery.tab.js
+nifi/js/jquery/statusbar/jquery.statusbar.css
+nifi/assets/jquery-form/jquery.form.js
+nifi/js/jquery/tabbs/jquery.tabbs.js
+nifi/js/jquery/combo/jquery.combo.js
+nifi/js/jquery/modal/jquery.modal.js
+nifi/assets/jquery-minicolors/jquery.minicolors.min.js
+nifi/assets/lodash-core/distrib/lodash-core.min.js
+nifi/assets/qtip2/dist/jquery.qtip.min.js
+nifi/assets/slickgrid/lib/jquery.event.drag-2.3.0.js
+nifi/assets/slickgrid/plugins/slick.cellrangeselector.js
+nifi/assets/slickgrid/plugins/slick.cellselectionmodel.js
+nifi/assets/slickgrid/plugins/slick.rowselectionmodel.js
+nifi/assets/slickgrid/plugins/slick.autotooltips.js
+nifi/assets/slickgrid/slick.formatters.js
+nifi/assets/slickgrid/slick.editors.js
+nifi/assets/slickgrid/slick.dataview.js
+nifi/assets/slickgrid/slick.core.js
+nifi/assets/slickgrid/slick.grid.js
+nifi/assets/angular/angular.min.js
+nifi/assets/qtip2/dist/jquery.qtip.min.css
+nifi/assets/angular-messages/angular-messages.min.js
+nifi/assets/jquery-ui-dist/jquery-ui.min.css
+nifi/assets/angular-resource/angular-resource.min.js
+nifi/assets/angular-route/angular-route.min.js
+nifi/assets/jquery-minicolors/jquery.minicolors.css
+nifi/assets/angular-aria/angular-aria.min.js
+nifi/assets/slickgrid/slick.grid.css
+nifi/assets/angular-animate/angular-animate.min.js
+nifi/css/slick-nifi-theme.css
+nifi/assets/angular-material/angular-material.min.js
+nifi/assets/JSON2/json2.js
+nifi/js/nf/nf-namespace.js
+nifi/js/nf/nf-ng-namespace.js
+nifi/js/nf/canvas/nf-ng-canvas-namespace.js
+nifi/fonts/flowfont/flowfont.css
+nifi/js/nf/canvas/nf-canvas-all.js
+nifi/js/jquery/nfeditor/languages/nfel.js
+nifi/js/jquery/nfeditor/jquery.nfeditor.js
+nifi/js/jquery/propertytable/jquery.propertytable.js
+nifi/js/jquery/tagcloud/jquery.tagcloud.js
+nifi/js/jquery/statusbar/jquery.statusbar.js
+nifi/images/nifi-logo.svg
+nifi/assets/angular-material/angular-material.min.css
+nifi/assets/font-awesome/css/font-awesome.min.css
+nifi-docs/html/expression-language-guide.html
+nifi/fonts/Roboto/Roboto-Regular.ttf
+nifi/fonts/Roboto/Roboto-Medium.ttf
+nifi/fonts/Roboto/Roboto-Bold.ttf
+nifi/fonts/Roboto_Slab/RobotoSlab-Regular.ttf
+nifi/fonts/Roboto_Slab/RobotoSlab-Bold.ttf
+nifi/fonts/flowfont/flowfont.woff2
+nifi/assets/font-awesome/fonts/fontawesome-webfont.woff2
+nifi/images/nifi-drop-splash.svg
+nifi/images/bg-error.png
+nifi/images/nifi-logo-about.svg
+nifi/views/nf-ng-breadcrumbs-directive-view.html
+nifi/images/iconInfo.png
+nifi/images/nifi16.ico
+nifi/images/inputCheckbox.png
+nifi/images/iconLoading.gif
+"
+
+#/nifi-api/access/kerberos
+#/nifi-api/flow/process-groups/root
+#/nifi-api/flow/status
+#/nifi-api/flow/current-user
+#/nifi-api/flow/controller/bulletins
+#/nifi-api/flow/cluster/summary
+#/nifi-api/access/oidc/exchange
+#/nifi-api/flow/current-user
+#/nifi-api/flow/client-id
+#/nifi-api/flow/config
+#/nifi-api/flow/banners
+#/nifi-api/flow/processor-types
+#/nifi-api/flow/about
+#/nifi-api/access/config
+#/nifi-api/flow/controller-service-types
+#/nifi-api/flow/reporting-task-types
+#/nifi-api/flow/prioritizers
+#/nifi-api/flow/process-groups/1363d72a-016b-1000-63e9-ab675d872d0b
+#/nifi-api/flow/status
+#/nifi-api/flow/current-user
+#/nifi-api/flow/controller/bulletins
+#/nifi-api/flow/cluster/summary
+
+rm -rf static
+mkdir static
+cd static
+
+mkdir -p nifi
+cd nifi
+wget -O index.html "${nifi_url}/nifi/"
+cd -
+
+for res in ${nifi_resources}; do
+  rm -f "${res}"
+  res_dir="$( dirname "${res}" )"
+  mkdir -p "${res_dir}"
+  cd "${res_dir}"
+  wget "${nifi_url}/${res}"
+  cd -
+done
