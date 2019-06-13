@@ -19,6 +19,7 @@
  */
 #include "core/ProcessSession.h"
 #include "core/ProcessSessionReadCallback.h"
+#include "io/BaseMemoryMap.h"
 #include <time.h>
 #include <vector>
 #include <queue>
@@ -279,6 +280,62 @@ void ProcessSession::write(const std::shared_ptr<core::FlowFile> &flow, OutputSt
     details << process_context_->getProcessorNode()->getName() << " modify flow record content " << flow->getUUIDStr();
     uint64_t endTime = getTimeMillis();
     provenance_report_->modifyContent(flow, details.str(), endTime - startTime);
+  } catch (std::exception &exception) {
+    if (flow && flow->getResourceClaim() == claim) {
+      flow->getResourceClaim()->decreaseFlowFileRecordOwnedCount();
+      flow->clearResourceClaim();
+    }
+    logger_->log_debug("Caught Exception %s", exception.what());
+    throw;
+  } catch (...) {
+    if (flow && flow->getResourceClaim() == claim) {
+      flow->getResourceClaim()->decreaseFlowFileRecordOwnedCount();
+      flow->clearResourceClaim();
+    }
+    logger_->log_debug("Caught Exception during process session write");
+    throw;
+  }
+}
+
+void ProcessSession::mmap(const std::shared_ptr<core::FlowFile> &flow,
+                          MemoryMapCallback *callback, size_t map_size) {
+  std::shared_ptr<ResourceClaim> claim =
+      std::make_shared<ResourceClaim>(process_context_->getContentRepository());
+
+  try {
+    uint64_t start_time = getTimeMillis();
+    claim->increaseFlowFileRecordOwnedCount();
+    std::shared_ptr<io::BaseMemoryMap> map =
+        process_context_->getContentRepository()->mmap(claim, map_size);
+    // Call the callback to map the content
+    if (nullptr == map) {
+      claim->decreaseFlowFileRecordOwnedCount();
+      rollback();
+      return;
+    }
+    if (!callback->process(map)) {
+      claim->decreaseFlowFileRecordOwnedCount();
+      rollback();
+      return;
+    }
+
+    flow->setSize(map->getSize());
+    flow->setOffset(0);
+    std::shared_ptr<ResourceClaim> flow_claim = flow->getResourceClaim();
+    if (flow_claim != nullptr) {
+      // Remove the old claim
+      flow_claim->decreaseFlowFileRecordOwnedCount();
+      flow->clearResourceClaim();
+    }
+    flow->setResourceClaim(claim);
+
+    map->unmap();
+    std::stringstream details;
+    details << process_context_->getProcessorNode()->getName()
+            << " modify flow record content " << flow->getUUIDStr();
+    uint64_t endTime = getTimeMillis();
+    provenance_report_->modifyContent(flow, details.str(),
+                                      endTime - start_time);
   } catch (std::exception &exception) {
     if (flow && flow->getResourceClaim() == claim) {
       flow->getResourceClaim()->decreaseFlowFileRecordOwnedCount();

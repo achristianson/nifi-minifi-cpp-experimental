@@ -22,7 +22,9 @@
 #include "ResourceClaim.h"
 #include "io/DataStream.h"
 #include "io/BaseStream.h"
+#include "io/BaseMemoryMap.h"
 #include "StreamManager.h"
+#include "MemoryMapManager.h"
 #include "core/Connectable.h"
 
 namespace org {
@@ -34,9 +36,9 @@ namespace core {
 /**
  * Content repository definition that extends StreamManager.
  */
-class ContentRepository : public StreamManager<minifi::ResourceClaim> {
- public:
-
+class ContentRepository : public StreamManager<minifi::ResourceClaim>,
+                          public MemoryMapManager<minifi::ResourceClaim> {
+public:
   virtual ~ContentRepository() {
 
   }
@@ -108,13 +110,50 @@ class ContentRepository : public StreamManager<minifi::ResourceClaim> {
     }
   }
 
+  virtual uint32_t
+  getMemoryMapCount(const std::shared_ptr<minifi::ResourceClaim> &mapObj) {
+    std::lock_guard<std::mutex> lock(mmap_count_map_mutex_);
+    auto cnt = mmap_count_map_.find(mapObj->getContentFullPath());
+    if (cnt != mmap_count_map_.end()) {
+      return cnt->second;
+    } else {
+      return 0;
+    }
+  }
+
+  virtual void incrementMemoryMapCount(
+      const std::shared_ptr<minifi::ResourceClaim> &mapObj) {
+    std::lock_guard<std::mutex> lock(mmap_count_map_mutex_);
+    const std::string str = mapObj->getContentFullPath();
+    auto count = mmap_count_map_.find(str);
+    if (count != mmap_count_map_.end()) {
+      mmap_count_map_[str] = count->second + 1;
+    } else {
+      mmap_count_map_[str] = 1;
+    }
+  }
+
+  virtual void decrementMemoryMapCount(
+      const std::shared_ptr<minifi::ResourceClaim> &mapObj) {
+    std::lock_guard<std::mutex> lock(mmap_count_map_mutex_);
+    const std::string str = mapObj->getContentFullPath();
+    auto count = mmap_count_map_.find(str);
+    if (count != mmap_count_map_.end() && count->second > 0) {
+      mmap_count_map_[str] = count->second - 1;
+    } else {
+      mmap_count_map_[str] = 0;
+    }
+  }
+
  protected:
 
   std::string directory_;
 
   std::mutex count_map_mutex_;
+  std::mutex mmap_count_map_mutex_;
 
   std::map<std::string, uint32_t> count_map_;
+  std::map<std::string, uint32_t> mmap_count_map_;
 };
 
 } /* namespace core */

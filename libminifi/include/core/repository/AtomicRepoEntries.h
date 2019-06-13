@@ -155,6 +155,11 @@ noexcept      : key_(std::move(other.key_)),
         buffer_.insert(buffer_.end(), ptr, ptr + size);
       }
 
+      /**
+       * Resizes buffer to the specified size.
+       */
+      void resize(size_t size) { buffer_.resize(size); }
+
       RepoValue<T> &operator=(RepoValue<T> &&other) noexcept {
         key_ = std::move(other.key_);
         buffer_ = std::move(other.buffer_);
