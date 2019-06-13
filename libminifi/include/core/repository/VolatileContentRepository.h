@@ -73,11 +73,30 @@ class VolatileContentRepository : public core::ContentRepository, public virtual
   virtual void stop();
 
   /**
+   * Template for consistent implementations of mutation ops.
+   */
+  template <class T>
+  std::shared_ptr<T>
+  mutate(const std::shared_ptr<minifi::ResourceClaim> &claim,
+         std::function<std::shared_ptr<T>(
+             const std::shared_ptr<minifi::ResourceClaim> &,
+             AtomicEntry<std::shared_ptr<minifi::ResourceClaim>> *)>
+             f);
+
+  /**
    * Creates writable stream.
    * @param claim resource claim
    * @return BaseStream shared pointer that represents the stream the consumer will write to.
    */
   virtual std::shared_ptr<io::BaseStream> write(const std::shared_ptr<minifi::ResourceClaim> &claim, bool append);
+
+  /**
+   * Create a passthrough memory map to the memory.
+   * @param map_obj the object to map
+   * @return BaseMemoryMap shared pointer mapped directly to the memory
+   */
+  virtual std::shared_ptr<io::BaseMemoryMap>
+  mmap(const std::shared_ptr<minifi::ResourceClaim> &claim, size_t mapSize);
 
   /**
    * Creates readable stream.

@@ -20,6 +20,7 @@
 #include <memory>
 #include <string>
 #include "io/FileStream.h"
+#include "io/FileMemoryMap.h"
 #include "utils/file/FileUtils.h"
 
 namespace org {
@@ -44,6 +45,13 @@ void FileSystemRepository::stop() {
 
 std::shared_ptr<io::BaseStream> FileSystemRepository::write(const std::shared_ptr<minifi::ResourceClaim> &claim, bool append) {
   return std::make_shared<io::FileStream>(claim->getContentFullPath(), append);
+}
+
+std::shared_ptr<io::BaseMemoryMap>
+FileSystemRepository::mmap(const std::shared_ptr<minifi::ResourceClaim> &claim,
+                           size_t mapSize) {
+  return std::make_shared<io::FileMemoryMap>(claim->getContentFullPath(),
+                                             mapSize);
 }
 
 bool FileSystemRepository::exists(const std::shared_ptr<minifi::ResourceClaim> &streamId) {

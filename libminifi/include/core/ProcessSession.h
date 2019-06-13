@@ -98,6 +98,9 @@ class ProcessSession : public ReferenceContainer {
   void read(const std::shared_ptr<core::FlowFile> &flow, InputStreamCallback *callback);
   // Execute the given write callback against the content
   void write(const std::shared_ptr<core::FlowFile> &flow, OutputStreamCallback *callback);
+  // Execute the given mmap callback against the content
+  void mmap(const std::shared_ptr<core::FlowFile> &flow,
+            MemoryMapCallback *callback, size_t map_size);
   // Execute the given write/append callback against the content
   void append(const std::shared_ptr<core::FlowFile> &flow, OutputStreamCallback *callback);
   // Penalize the flow

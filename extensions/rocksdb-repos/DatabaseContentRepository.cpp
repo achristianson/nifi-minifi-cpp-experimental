@@ -21,6 +21,7 @@
 #include <string>
 #include "RocksDbStream.h"
 #include "rocksdb/merge_operator.h"
+#include "io/PassthroughMemoryMap.h"
 
 namespace org {
 namespace apache {
@@ -68,6 +69,44 @@ std::shared_ptr<io::BaseStream> DatabaseContentRepository::write(const std::shar
     return nullptr;
   // append is already supported in all modes
   return std::make_shared<io::RocksDbStream>(claim->getContentFullPath(), db_, true);
+}
+
+std::shared_ptr<io::BaseMemoryMap> DatabaseContentRepository::mmap(
+    const std::shared_ptr<minifi::ResourceClaim> &claim, size_t mapSize) {
+  // here, because the underlying does not support direct mapping of the value
+  // to memory, we read the entire value in to memory, then write it back to the
+  // db upon closure of the MemoryMap
+  std::vector<uint8_t> buf;
+  auto rs = read(claim);
+  int ret;
+  int inc_size = 4096;
+  size_t read_size = 0;
+
+  while (true) {
+    // Don't read more than config limit or the size of the buffer
+    buf.reserve(buf.size() + inc_size);
+    ret = rs->readData(buf.data(), inc_size);
+
+    if (ret < 0) {
+      return nullptr; // Stream error
+    } else if (ret == 0) {
+      break; // End of stream, no more data
+    }
+
+    read_size += ret;
+    buf.resize(read_size);
+  }
+
+  auto mm = std::make_shared<io::PassthroughMemoryMap>(buf.data(), read_size);
+  mm->registerUnmapHook([this, claim](void *data, size_t map_size) {
+    auto ws = write(claim);
+    if (ws->writeData(reinterpret_cast<uint8_t *>(data), map_size) != 0) {
+      throw std::runtime_error("Failed to write memory map data to db: " +
+                               claim->getContentFullPath());
+    }
+  });
+
+  return mm;
 }
 
 std::shared_ptr<io::BaseStream> DatabaseContentRepository::read(const std::shared_ptr<minifi::ResourceClaim> &claim) {
