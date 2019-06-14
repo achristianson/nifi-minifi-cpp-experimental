@@ -22,6 +22,7 @@
 #include <iostream>
 #include "../TestBase.h"
 #include "core/Core.h"
+#include "properties/Configure.h"
 #include "ResourceClaim.h"
 
 TEST_CASE("MemoryMap Test Test", "[MemoryMapTest1]") {
@@ -63,4 +64,28 @@ TEST_CASE("MemoryMap FileSystemRepository Write", "[MemoryMapTest3]") {
     iss << is.rdbuf();
   }
   REQUIRE(read_string == "write test");
+}
+
+TEST_CASE("MemoryMap VolatileContentRepository Write/Read", "[MemoryMapTest3]") {
+  auto vr = std::make_shared<core::repository::VolatileContentRepository>();
+  auto c = std::make_shared<minifi::Configure>();
+  vr->initialize(c);
+  TestController testController;
+  char format[] = "/tmp/testRepo.XXXXXX";
+  auto dir = std::string(testController.createTempDirectory(format));
+  auto test_file = dir + "/testfile";
+  std::string write_test_string("test read val");
+
+  auto claim = std::make_shared<minifi::ResourceClaim>(test_file, vr);
+
+  {
+    auto mm = vr->mmap(claim, 1024);
+    std::memcpy(reinterpret_cast<char *>(mm->getData()), write_test_string.c_str(), write_test_string.length());
+  }
+
+  {
+    auto mm = vr->mmap(claim, 1024);
+    std::string read_string(reinterpret_cast<const char *>(mm->getData()));
+    REQUIRE(read_string == "test read val");
+  }
 }
