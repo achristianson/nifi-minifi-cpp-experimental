@@ -44,7 +44,7 @@ public:
    * File Memory Map constructor that opens and maps the given file with the
    * given size.
    */
-  explicit FileMemoryMap(const std::string &path, size_t map_size);
+  FileMemoryMap(const std::string &path, size_t map_size);
 
   virtual ~FileMemoryMap() { unmap(); }
 

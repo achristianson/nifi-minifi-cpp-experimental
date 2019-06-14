@@ -36,29 +36,29 @@ namespace minifi {
 namespace io {
 
 FileMemoryMap::FileMemoryMap(const std::string &path, size_t map_size)
-    : logger_(logging::LoggerFactory<FileMemoryMap>::getLogger()), path_(path),
-      length_(map_size), file_data_(nullptr) {
+    : file_data_(nullptr), path_(path),
+      length_(map_size), logger_(logging::LoggerFactory<FileMemoryMap>::getLogger()) {
   // open the file
-  fd_ = open(path.c_str(), O_RDWR | O_CREAT, (mode_t)0600);
+  fd_ = open(path.c_str(), O_RDWR | O_CREAT, 0600);
 
   if (fd_ < 0) {
     throw std::runtime_error("Failed to open for memory mapping: " + path);
   }
 
   // ensure file is at least as big as requested map size
-  if (lseek(fd_, map_size, SEEK_SET) != 0) {
+  if (lseek(fd_, map_size, SEEK_SET) < 0) {
     throw std::runtime_error("Failed to seek " + std::to_string(map_size) +
                              " bytes for mapping: " + path);
   }
 
-  if (write(fd_, "", 1) != 0) {
+  if (write(fd_, "", 1) < 0) {
     close(fd_);
     throw std::runtime_error(
         "Failed to write 0 byte at end of file to expand file: " + path);
   }
 
   // memory map the file
-  file_data_ = mmap(0, map_size, PROT_READ | PROT_WRITE,
+  file_data_ = mmap(nullptr, map_size, PROT_READ | PROT_WRITE,
                     MAP_SHARED | MAP_POPULATE, fd_, 0);
 
   if (file_data_ == MAP_FAILED) {
