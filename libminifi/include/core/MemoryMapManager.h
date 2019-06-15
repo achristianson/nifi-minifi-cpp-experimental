@@ -29,30 +29,28 @@ namespace minifi {
 namespace core {
 
 /**
- * Purpose: Provides a base for all memory-mapping managers. The goal here is to provide
- * a small set of interfaces that provide a small set of operations to provide state 
- * management of memory maps.
+ * Purpose: Provides a base for all memory-mapping managers. The goal here is to
+ * provide a small set of interfaces that provide a small set of operations to
+ * provide state management of memory maps.
  */
-template<typename T>
+template <typename T>
 class MemoryMapManager {
  public:
-  virtual ~MemoryMapManager() {
-
-  }
+  virtual ~MemoryMapManager() {}
 
   /**
    * Create a memory map to the object.
    * @param map_obj the object to map
    * @return result of operation (true of succeeded)
    */
-  virtual std::shared_ptr<io::BaseMemoryMap> mmap(const std::shared_ptr<T> &mapObj, size_t mapSize) = 0;
+  virtual std::shared_ptr<io::BaseMemoryMap> mmap(
+      const std::shared_ptr<T> &mapObj, size_t mapSize, bool readOnly) = 0;
 
   virtual uint32_t getMemoryMapCount(const std::shared_ptr<T> &mapObj) = 0;
 
   virtual void incrementMemoryMapCount(const std::shared_ptr<T> &mapObj) = 0;
 
   virtual void decrementMemoryMapCount(const std::shared_ptr<T> &mapObj) = 0;
-
 };
 
 } /* namespace core */

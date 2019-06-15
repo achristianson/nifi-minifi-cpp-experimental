@@ -78,10 +78,11 @@ std::shared_ptr<io::BaseStream> DatabaseContentRepository::write(
 }
 
 std::shared_ptr<io::BaseMemoryMap> DatabaseContentRepository::mmap(
-    const std::shared_ptr<minifi::ResourceClaim> &claim, size_t map_size) {
+    const std::shared_ptr<minifi::ResourceClaim> &claim, size_t map_size,
+    bool readOnly) {
   // here, because the underlying does not support direct mapping of the value
-  // to memory, we read the entire value in to memory, then write it back to the
-  // db upon closure of the MemoryMap
+  // to memory, we read the entire value in to memory, then write (iff not
+  // readOnly) it back to the db upon closure of the MemoryMap
   auto buf = std::make_shared<std::vector<uint8_t>>();
   buf->resize(map_size);
   auto rs = read(claim);
@@ -97,13 +98,16 @@ std::shared_ptr<io::BaseMemoryMap> DatabaseContentRepository::mmap(
   }
 
   auto mm = std::make_shared<io::PassthroughMemoryMap>(buf->data(), map_size);
-  auto ws = write(claim);
-  mm->registerUnmapHook([ws, claim, buf](void *data, size_t map_size) {
-    if (ws->writeData(reinterpret_cast<uint8_t *>(data), map_size) != 0) {
-      throw std::runtime_error("Failed to write memory map data to db: " +
-                               claim->getContentFullPath());
-    }
-  });
+
+  if (!readOnly) {
+    auto ws = write(claim);
+    mm->registerUnmapHook([ws, claim, buf](void *data, size_t map_size) {
+      if (ws->writeData(reinterpret_cast<uint8_t *>(data), map_size) != 0) {
+        throw std::runtime_error("Failed to write memory map data to db: " +
+                                 claim->getContentFullPath());
+      }
+    });
+  }
 
   return mm;
 }

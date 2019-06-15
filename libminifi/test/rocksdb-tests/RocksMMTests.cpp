@@ -48,14 +48,14 @@ TEST_CASE("DatabaseContentRepository Write/Read", "[RocksMMTest1]") {
   auto claim = std::make_shared<minifi::ResourceClaim>(test_file, dbr);
 
   {
-    auto mm = dbr->mmap(claim, 1024);
+    auto mm = dbr->mmap(claim, 1024, true);
     REQUIRE(mm != nullptr);
     std::memcpy(reinterpret_cast<char *>(mm->getData()),
                 write_test_string.c_str(), write_test_string.length());
   }
 
   {
-    auto mm = dbr->mmap(claim, 1024);
+    auto mm = dbr->mmap(claim, 1024, true);
     REQUIRE(mm != nullptr);
     std::string read_string(reinterpret_cast<const char *>(mm->getData()));
     REQUIRE(read_string == "test read val");

@@ -18,13 +18,13 @@
 #ifndef LIBMINIFI_INCLUDE_IO_TLS_FILEMEMORYMAP_H_
 #define LIBMINIFI_INCLUDE_IO_TLS_FILEMEMORYMAP_H_
 
-#include "BaseMemoryMap.h"
-#include "core/logging/LoggerConfiguration.h"
 #include <cstdint>
 #include <iostream>
 #include <memory>
 #include <mutex>
 #include <string>
+#include "BaseMemoryMap.h"
+#include "core/logging/LoggerConfiguration.h"
 
 namespace org {
 namespace apache {
@@ -39,12 +39,12 @@ namespace io {
  * Provides an interface to get the memory address and size.
  */
 class FileMemoryMap : public io::BaseMemoryMap {
-public:
+ public:
   /**
    * File Memory Map constructor that opens and maps the given file with the
    * given size.
    */
-  FileMemoryMap(const std::string &path, size_t map_size);
+  FileMemoryMap(const std::string &path, size_t map_size, bool read_only);
 
   virtual ~FileMemoryMap() { unmap(); }
 
@@ -66,13 +66,14 @@ public:
    */
   virtual void unmap();
 
-protected:
+ protected:
   int fd_;
   void *file_data_;
   std::string path_;
   size_t length_;
+  bool read_only_;
 
-private:
+ private:
   std::shared_ptr<logging::Logger> logger_;
 };
 

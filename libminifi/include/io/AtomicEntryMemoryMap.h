@@ -18,25 +18,31 @@
 #ifndef LIBMINIFI_INCLUDE_IO_ATOMICENTRYMEMORYMAP_H_
 #define LIBMINIFI_INCLUDE_IO_ATOMICENTRYMEMORYMAP_H_
 
-#include <mutex>
 #include <cstring>
+#include <mutex>
 #include "BaseMemoryMap.h"
-#include "core/repository/AtomicRepoEntries.h"
 #include "Exception.h"
 #include "core/logging/LoggerConfiguration.h"
+#include "core/repository/AtomicRepoEntries.h"
 namespace org {
 namespace apache {
 namespace nifi {
 namespace minifi {
 namespace io {
 
-template<typename T>
+template <typename T>
 class AtomicEntryMemoryMap : public BaseMemoryMap {
  public:
-  AtomicEntryMemoryMap(const T key, core::repository::AtomicEntry<T> *entry, size_t map_size)
+  AtomicEntryMemoryMap(const T key, core::repository::AtomicEntry<T> *entry,
+                       size_t map_size, bool readOnly)
       : key_(key),
         entry_(entry),
         logger_(logging::LoggerFactory<AtomicEntryMemoryMap()>::getLogger()) {
+    if (readOnly) {
+      throw std::runtime_error(
+          "AtomicEntryMemoryMap does not support readOnly mode");
+    }
+
     if (entry_->getValue(key, &value_)) {
       value_->resize(map_size);
       entry_->decrementOwnership();
@@ -46,28 +52,24 @@ class AtomicEntryMemoryMap : public BaseMemoryMap {
     }
   }
 
-  virtual ~AtomicEntryMemoryMap() {
-    entry_->decrementOwnership();
-  }
+  virtual ~AtomicEntryMemoryMap() { entry_->decrementOwnership(); }
 
-  virtual void unmap() {
-
-  }
+  virtual void unmap() {}
 
   virtual size_t getSize() {
-    if(invalid_stream_) {
-        return -1;
+    if (invalid_stream_) {
+      return -1;
     }
 
     return value_->getBufferSize();
   }
 
   virtual void *getData() {
-      if (invalid_stream_) {
-          return nullptr;
-      }
+    if (invalid_stream_) {
+      return nullptr;
+    }
 
-      return (void *)(value_->getBuffer());
+    return (void *)(value_->getBuffer());
   }
 
  protected:
@@ -78,7 +80,6 @@ class AtomicEntryMemoryMap : public BaseMemoryMap {
 
   // Logger
   std::shared_ptr<logging::Logger> logger_;
-
 };
 
 } /* namespace io */

@@ -18,10 +18,10 @@
 #ifndef LIBMINIFI_INCLUDE_CORE_REPOSITORY_FileSystemRepository_H_
 #define LIBMINIFI_INCLUDE_CORE_REPOSITORY_FileSystemRepository_H_
 
-#include "core/Core.h"
 #include "../ContentRepository.h"
-#include "properties/Configure.h"
+#include "core/Core.h"
 #include "core/logging/LoggerConfiguration.h"
+#include "properties/Configure.h"
 namespace org {
 namespace apache {
 namespace nifi {
@@ -30,31 +30,33 @@ namespace core {
 namespace repository {
 
 /**
- * FileSystemRepository is a content repository that stores data onto the local file system.
+ * FileSystemRepository is a content repository that stores data onto the local
+ * file system.
  */
-class FileSystemRepository : public core::ContentRepository, public core::CoreComponent {
+class FileSystemRepository : public core::ContentRepository,
+                             public core::CoreComponent {
  public:
   FileSystemRepository(std::string name = getClassName<FileSystemRepository>())
       : core::CoreComponent(name),
-        logger_(logging::LoggerFactory<FileSystemRepository>::getLogger()) {
+        logger_(logging::LoggerFactory<FileSystemRepository>::getLogger()) {}
+  virtual ~FileSystemRepository() {}
 
-  }
-  virtual ~FileSystemRepository() {
-
-  }
-
-  virtual bool initialize(const std::shared_ptr<minifi::Configure> &configuration);
+  virtual bool initialize(
+      const std::shared_ptr<minifi::Configure> &configuration);
 
   virtual void stop();
 
   bool exists(const std::shared_ptr<minifi::ResourceClaim> &streamId);
 
-  virtual std::shared_ptr<io::BaseStream> write(const std::shared_ptr<minifi::ResourceClaim> &claim, bool append = false);
+  virtual std::shared_ptr<io::BaseStream> write(
+      const std::shared_ptr<minifi::ResourceClaim> &claim, bool append = false);
 
-  virtual std::shared_ptr<io::BaseStream> read(const std::shared_ptr<minifi::ResourceClaim> &claim);
+  virtual std::shared_ptr<io::BaseStream> read(
+      const std::shared_ptr<minifi::ResourceClaim> &claim);
 
-  virtual std::shared_ptr<io::BaseMemoryMap>
-  mmap(const std::shared_ptr<minifi::ResourceClaim> &claim, size_t mapSize);
+  virtual std::shared_ptr<io::BaseMemoryMap> mmap(
+      const std::shared_ptr<minifi::ResourceClaim> &claim, size_t mapSize,
+      bool readOnly);
 
   virtual bool close(const std::shared_ptr<minifi::ResourceClaim> &claim) {
     return remove(claim);
@@ -63,7 +65,6 @@ class FileSystemRepository : public core::ContentRepository, public core::CoreCo
   virtual bool remove(const std::shared_ptr<minifi::ResourceClaim> &claim);
 
  private:
-
   std::shared_ptr<logging::Logger> logger_;
 };
 

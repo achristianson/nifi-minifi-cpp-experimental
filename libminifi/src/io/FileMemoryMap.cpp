@@ -19,14 +19,14 @@
 #include "io/FileMemoryMap.h"
 
 #include <fcntl.h>
-#include <fstream>
-#include <memory>
-#include <mutex>
-#include <string>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <fstream>
+#include <memory>
+#include <mutex>
+#include <string>
 #include <vector>
 
 namespace org {
@@ -35,11 +35,19 @@ namespace nifi {
 namespace minifi {
 namespace io {
 
-FileMemoryMap::FileMemoryMap(const std::string &path, size_t map_size)
-    : file_data_(nullptr), path_(path),
-      length_(map_size), logger_(logging::LoggerFactory<FileMemoryMap>::getLogger()) {
+FileMemoryMap::FileMemoryMap(const std::string &path, size_t map_size,
+                             bool read_only)
+    : file_data_(nullptr),
+      path_(path),
+      length_(map_size),
+      read_only_(read_only),
+      logger_(logging::LoggerFactory<FileMemoryMap>::getLogger()) {
   // open the file
-  fd_ = open(path.c_str(), O_RDWR | O_CREAT, 0600);
+  if (read_only) {
+    fd_ = open(path.c_str(), O_RDWR | O_CREAT, 0600);
+  } else {
+    fd_ = open(path.c_str(), O_RDONLY | O_CREAT, 0600);
+  }
 
   if (fd_ < 0) {
     throw std::runtime_error("Failed to open for memory mapping: " + path);
@@ -58,13 +66,18 @@ FileMemoryMap::FileMemoryMap(const std::string &path, size_t map_size)
   }
 
   // memory map the file
-  file_data_ = mmap(nullptr, map_size, PROT_READ | PROT_WRITE,
-                    MAP_SHARED | MAP_POPULATE, fd_, 0);
+  if (read_only) {
+    file_data_ =
+        mmap(nullptr, map_size, PROT_READ, MAP_SHARED | MAP_POPULATE, fd_, 0);
+  } else {
+    file_data_ = mmap(nullptr, map_size, PROT_READ | PROT_WRITE,
+                      MAP_SHARED | MAP_POPULATE, fd_, 0);
+  }
 
   if (file_data_ == MAP_FAILED) {
     throw std::runtime_error("Failed to memory map file: " + path);
   }
-}
+}  // namespace io
 
 void FileMemoryMap::unmap() {
   if (file_data_ != nullptr) {
@@ -88,8 +101,8 @@ void *FileMemoryMap::getData() { return file_data_; }
 
 size_t FileMemoryMap::getSize() { return length_; }
 
-} /* namespace io */
-} /* namespace minifi */
-} /* namespace nifi */
-} /* namespace apache */
+}  // namespace io
+}  // namespace minifi
+}  // namespace nifi
+}  // namespace apache
 } /* namespace org */
