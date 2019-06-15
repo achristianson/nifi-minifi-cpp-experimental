@@ -20,8 +20,8 @@
 #include <memory>
 #include <string>
 #include "RocksDbStream.h"
-#include "rocksdb/merge_operator.h"
 #include "io/PassthroughMemoryMap.h"
+#include "rocksdb/merge_operator.h"
 
 namespace org {
 namespace apache {
@@ -30,9 +30,11 @@ namespace minifi {
 namespace core {
 namespace repository {
 
-bool DatabaseContentRepository::initialize(const std::shared_ptr<minifi::Configure> &configuration) {
+bool DatabaseContentRepository::initialize(
+    const std::shared_ptr<minifi::Configure> &configuration) {
   std::string value;
-  if (configuration->get(Configure::nifi_dbcontent_repository_directory_default, value)) {
+  if (configuration->get(Configure::nifi_dbcontent_repository_directory_default,
+                         value)) {
     directory_ = value;
   } else {
     directory_ = configuration->getHome() + "/dbcontentrepository";
@@ -46,10 +48,12 @@ bool DatabaseContentRepository::initialize(const std::shared_ptr<minifi::Configu
   options.max_successive_merges = 0;
   rocksdb::Status status = rocksdb::DB::Open(options, directory_.c_str(), &db_);
   if (status.ok()) {
-    logger_->log_debug("NiFi Content DB Repository database open %s success", directory_);
+    logger_->log_debug("NiFi Content DB Repository database open %s success",
+                       directory_);
     is_valid_ = true;
   } else {
-    logger_->log_error("NiFi Content DB Repository database open %s fail", directory_);
+    logger_->log_error("NiFi Content DB Repository database open %s fail",
+                       directory_);
     is_valid_ = false;
   }
   return is_valid_;
@@ -62,13 +66,15 @@ void DatabaseContentRepository::stop() {
   }
 }
 
-std::shared_ptr<io::BaseStream> DatabaseContentRepository::write(const std::shared_ptr<minifi::ResourceClaim> &claim, bool append) {
-  // the traditional approach with these has been to return -1 from the stream; however, since we have the ability here
-  // we can simply return a nullptr, which is also valid from the API when this stream is not valid.
-  if (nullptr == claim || !is_valid_ || !db_)
-    return nullptr;
+std::shared_ptr<io::BaseStream> DatabaseContentRepository::write(
+    const std::shared_ptr<minifi::ResourceClaim> &claim, bool append) {
+  // the traditional approach with these has been to return -1 from the stream;
+  // however, since we have the ability here we can simply return a nullptr,
+  // which is also valid from the API when this stream is not valid.
+  if (nullptr == claim || !is_valid_ || !db_) return nullptr;
   // append is already supported in all modes
-  return std::make_shared<io::RocksDbStream>(claim->getContentFullPath(), db_, true);
+  return std::make_shared<io::RocksDbStream>(claim->getContentFullPath(), db_,
+                                             true);
 }
 
 std::shared_ptr<io::BaseMemoryMap> DatabaseContentRepository::mmap(
@@ -76,20 +82,23 @@ std::shared_ptr<io::BaseMemoryMap> DatabaseContentRepository::mmap(
   // here, because the underlying does not support direct mapping of the value
   // to memory, we read the entire value in to memory, then write it back to the
   // db upon closure of the MemoryMap
-  std::vector<uint8_t> buf;
-  buf.resize(map_size);
+  auto buf = std::make_shared<std::vector<uint8_t>>();
+  buf->resize(map_size);
   auto rs = read(claim);
-  int ret;
 
-  ret = rs->readData(buf.data(), map_size);
+  if (rs != nullptr) {
+    int ret;
 
-  if (ret < 0) {
-    return nullptr; // Stream error
+    ret = rs->readData(buf->data(), map_size);
+
+    // zero-out remaining buf
+    auto zero_start = std::max(0, ret);
+    memset(buf->data(), zero_start, map_size - zero_start);
   }
 
-  auto mm = std::make_shared<io::PassthroughMemoryMap>(buf.data(), map_size);
-  mm->registerUnmapHook([this, claim](void *data, size_t map_size) {
-    auto ws = write(claim);
+  auto mm = std::make_shared<io::PassthroughMemoryMap>(buf->data(), map_size);
+  auto ws = write(claim);
+  mm->registerUnmapHook([ws, claim, buf](void *data, size_t map_size) {
     if (ws->writeData(reinterpret_cast<uint8_t *>(data), map_size) != 0) {
       throw std::runtime_error("Failed to write memory map data to db: " +
                                claim->getContentFullPath());
@@ -99,18 +108,22 @@ std::shared_ptr<io::BaseMemoryMap> DatabaseContentRepository::mmap(
   return mm;
 }
 
-std::shared_ptr<io::BaseStream> DatabaseContentRepository::read(const std::shared_ptr<minifi::ResourceClaim> &claim) {
-  // the traditional approach with these has been to return -1 from the stream; however, since we have the ability here
-  // we can simply return a nullptr, which is also valid from the API when this stream is not valid.
-  if (nullptr == claim || !is_valid_ || !db_)
-    return nullptr;
-  return std::make_shared<io::RocksDbStream>(claim->getContentFullPath(), db_, false);
+std::shared_ptr<io::BaseStream> DatabaseContentRepository::read(
+    const std::shared_ptr<minifi::ResourceClaim> &claim) {
+  // the traditional approach with these has been to return -1 from the stream;
+  // however, since we have the ability here we can simply return a nullptr,
+  // which is also valid from the API when this stream is not valid.
+  if (nullptr == claim || !is_valid_ || !db_) return nullptr;
+  return std::make_shared<io::RocksDbStream>(claim->getContentFullPath(), db_,
+                                             false);
 }
 
-bool DatabaseContentRepository::exists(const std::shared_ptr<minifi::ResourceClaim> &streamId) {
+bool DatabaseContentRepository::exists(
+    const std::shared_ptr<minifi::ResourceClaim> &streamId) {
   std::string value;
   rocksdb::Status status;
-  status = db_->Get(rocksdb::ReadOptions(), streamId->getContentFullPath(), &value);
+  status =
+      db_->Get(rocksdb::ReadOptions(), streamId->getContentFullPath(), &value);
   if (status.ok()) {
     logger_->log_debug("%s exists", streamId->getContentFullPath());
     return true;
@@ -120,16 +133,17 @@ bool DatabaseContentRepository::exists(const std::shared_ptr<minifi::ResourceCla
   }
 }
 
-bool DatabaseContentRepository::remove(const std::shared_ptr<minifi::ResourceClaim> &claim) {
-  if (nullptr == claim || !is_valid_ || !db_)
-    return false;
+bool DatabaseContentRepository::remove(
+    const std::shared_ptr<minifi::ResourceClaim> &claim) {
+  if (nullptr == claim || !is_valid_ || !db_) return false;
   rocksdb::Status status;
   status = db_->Delete(rocksdb::WriteOptions(), claim->getContentFullPath());
   if (status.ok()) {
     logger_->log_debug("Deleted %s", claim->getContentFullPath());
     return true;
   } else {
-    logger_->log_debug("Attempted, but could not delete %s", claim->getContentFullPath());
+    logger_->log_debug("Attempted, but could not delete %s",
+                       claim->getContentFullPath());
     return false;
   }
 }
