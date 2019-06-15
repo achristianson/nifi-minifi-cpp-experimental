@@ -30,11 +30,9 @@ namespace minifi {
 namespace core {
 namespace repository {
 
-bool FileSystemRepository::initialize(
-    const std::shared_ptr<minifi::Configure> &configuration) {
+bool FileSystemRepository::initialize(const std::shared_ptr<minifi::Configure> &configuration) {
   std::string value;
-  if (configuration->get(Configure::nifi_dbcontent_repository_directory_default,
-                         value)) {
+  if (configuration->get(Configure::nifi_dbcontent_repository_directory_default, value)) {
     directory_ = value;
   } else {
     directory_ = configuration->getHome() + "/contentrepository";
@@ -50,26 +48,21 @@ std::shared_ptr<io::BaseStream> FileSystemRepository::write(
 }
 
 std::shared_ptr<io::BaseMemoryMap> FileSystemRepository::mmap(
-    const std::shared_ptr<minifi::ResourceClaim> &claim, size_t mapSize,
-    bool readOnly) {
-  return std::make_shared<io::FileMemoryMap>(claim->getContentFullPath(),
-                                             mapSize, readOnly);
+    const std::shared_ptr<minifi::ResourceClaim> &claim, size_t mapSize, bool readOnly) {
+  return std::make_shared<io::FileMemoryMap>(claim->getContentFullPath(), mapSize, readOnly);
 }
 
-bool FileSystemRepository::exists(
-    const std::shared_ptr<minifi::ResourceClaim> &streamId) {
+bool FileSystemRepository::exists(const std::shared_ptr<minifi::ResourceClaim> &streamId) {
   std::ifstream file(streamId->getContentFullPath());
   return file.good();
 }
 
 std::shared_ptr<io::BaseStream> FileSystemRepository::read(
     const std::shared_ptr<minifi::ResourceClaim> &claim) {
-  return std::make_shared<io::FileStream>(claim->getContentFullPath(), 0,
-                                          false);
+  return std::make_shared<io::FileStream>(claim->getContentFullPath(), 0, false);
 }
 
-bool FileSystemRepository::remove(
-    const std::shared_ptr<minifi::ResourceClaim> &claim) {
+bool FileSystemRepository::remove(const std::shared_ptr<minifi::ResourceClaim> &claim) {
   std::remove(claim->getContentFullPath().c_str());
   return true;
 }

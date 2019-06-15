@@ -33,16 +33,14 @@ namespace repository {
  * FileSystemRepository is a content repository that stores data onto the local
  * file system.
  */
-class FileSystemRepository : public core::ContentRepository,
-                             public core::CoreComponent {
+class FileSystemRepository : public core::ContentRepository, public core::CoreComponent {
  public:
   FileSystemRepository(std::string name = getClassName<FileSystemRepository>())
       : core::CoreComponent(name),
         logger_(logging::LoggerFactory<FileSystemRepository>::getLogger()) {}
   virtual ~FileSystemRepository() {}
 
-  virtual bool initialize(
-      const std::shared_ptr<minifi::Configure> &configuration);
+  virtual bool initialize(const std::shared_ptr<minifi::Configure> &configuration);
 
   virtual void stop();
 
@@ -55,13 +53,9 @@ class FileSystemRepository : public core::ContentRepository,
       const std::shared_ptr<minifi::ResourceClaim> &claim);
 
   virtual std::shared_ptr<io::BaseMemoryMap> mmap(
-      const std::shared_ptr<minifi::ResourceClaim> &claim, size_t mapSize,
-      bool readOnly);
+      const std::shared_ptr<minifi::ResourceClaim> &claim, size_t mapSize, bool readOnly);
 
-  virtual bool close(const std::shared_ptr<minifi::ResourceClaim> &claim) {
-    return remove(claim);
-  }
-
+  virtual bool close(const std::shared_ptr<minifi::ResourceClaim> &claim) { return remove(claim); }
   virtual bool remove(const std::shared_ptr<minifi::ResourceClaim> &claim);
 
  private:

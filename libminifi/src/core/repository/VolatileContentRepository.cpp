@@ -35,17 +35,15 @@ namespace repository {
 
 const char *VolatileContentRepository::minimal_locking = "minimal.locking";
 
-bool VolatileContentRepository::initialize(
-    const std::shared_ptr<Configure> &configure) {
+bool VolatileContentRepository::initialize(const std::shared_ptr<Configure> &configure) {
   VolatileRepository::initialize(configure);
-  resource_claim_comparator_ =
-      [](std::shared_ptr<minifi::ResourceClaim> lhsPtr,
-         std::shared_ptr<minifi::ResourceClaim> rhsPtr) {
-        if (lhsPtr == nullptr || rhsPtr == nullptr) {
-          return false;
-        }
-        return lhsPtr->getContentFullPath() == rhsPtr->getContentFullPath();
-      };
+  resource_claim_comparator_ = [](std::shared_ptr<minifi::ResourceClaim> lhsPtr,
+                                  std::shared_ptr<minifi::ResourceClaim> rhsPtr) {
+    if (lhsPtr == nullptr || rhsPtr == nullptr) {
+      return false;
+    }
+    return lhsPtr->getContentFullPath() == rhsPtr->getContentFullPath();
+  };
   resource_claim_check_ = [](std::shared_ptr<minifi::ResourceClaim> claim) {
     return claim->getFlowFileRecordOwnedCount() <= 0;
   };
@@ -94,9 +92,8 @@ void VolatileContentRepository::start() {
 template <class T>
 std::shared_ptr<T> VolatileContentRepository::mutate(
     const std::shared_ptr<minifi::ResourceClaim> &claim,
-    std::function<std::shared_ptr<T>(
-        const std::shared_ptr<minifi::ResourceClaim> &,
-        AtomicEntry<std::shared_ptr<minifi::ResourceClaim>> *)>
+    std::function<std::shared_ptr<T>(const std::shared_ptr<minifi::ResourceClaim> &,
+                                     AtomicEntry<std::shared_ptr<minifi::ResourceClaim>> *)>
         f) {
   logger_->log_info("enter mutate for %s", claim->getContentFullPath());
   {
@@ -115,12 +112,10 @@ std::shared_ptr<T> VolatileContentRepository::mutate(
   int size = 0;
   if (LIKELY(minimize_locking_ == true)) {
     for (auto ent : value_vector_) {
-      if (ent->testAndSetKey(claim, nullptr, nullptr,
-                             resource_claim_comparator_)) {
+      if (ent->testAndSetKey(claim, nullptr, nullptr, resource_claim_comparator_)) {
         std::lock_guard<std::mutex> lock(map_mutex_);
         master_list_[claim->getContentFullPath()] = ent;
-        logger_->log_info("Minimize locking, return stream for %s",
-                          claim->getContentFullPath());
+        logger_->log_info("Minimize locking, return stream for %s", claim->getContentFullPath());
         return f(claim, ent);
       }
       size++;
@@ -132,10 +127,8 @@ std::shared_ptr<T> VolatileContentRepository::mutate(
       return f(claim, claim_check->second);
     } else {
       AtomicEntry<std::shared_ptr<minifi::ResourceClaim>> *ent =
-          new AtomicEntry<std::shared_ptr<minifi::ResourceClaim>>(
-              &current_size_, &max_size_);
-      if (ent->testAndSetKey(claim, nullptr, nullptr,
-                             resource_claim_comparator_)) {
+          new AtomicEntry<std::shared_ptr<minifi::ResourceClaim>>(&current_size_, &max_size_);
+      if (ent->testAndSetKey(claim, nullptr, nullptr, resource_claim_comparator_)) {
         master_list_[claim->getContentFullPath()] = ent;
         return f(claim, ent);
       }
@@ -153,27 +146,22 @@ std::shared_ptr<io::BaseStream> VolatileContentRepository::write(
   return mutate<io::BaseStream>(
       claim, [](const std::shared_ptr<minifi::ResourceClaim> &claim,
                 AtomicEntry<std::shared_ptr<minifi::ResourceClaim>> *ent) {
-        return std::make_shared<
-            io::AtomicEntryStream<std::shared_ptr<minifi::ResourceClaim>>>(
+        return std::make_shared<io::AtomicEntryStream<std::shared_ptr<minifi::ResourceClaim>>>(
             claim, ent);
       });
 }
 
 std::shared_ptr<io::BaseMemoryMap> VolatileContentRepository::mmap(
-    const std::shared_ptr<minifi::ResourceClaim> &claim, size_t mapSize,
-    bool readOnly) {
+    const std::shared_ptr<minifi::ResourceClaim> &claim, size_t mapSize, bool readOnly) {
   return mutate<io::BaseMemoryMap>(
-      claim, [mapSize, readOnly](
-                 const std::shared_ptr<minifi::ResourceClaim> &claim,
-                 AtomicEntry<std::shared_ptr<minifi::ResourceClaim>> *ent) {
-        return std::make_shared<
-            io::AtomicEntryMemoryMap<std::shared_ptr<minifi::ResourceClaim>>>(
+      claim, [mapSize, readOnly](const std::shared_ptr<minifi::ResourceClaim> &claim,
+                                 AtomicEntry<std::shared_ptr<minifi::ResourceClaim>> *ent) {
+        return std::make_shared<io::AtomicEntryMemoryMap<std::shared_ptr<minifi::ResourceClaim>>>(
             claim, ent, mapSize, readOnly);
       });
 }
 
-bool VolatileContentRepository::exists(
-    const std::shared_ptr<minifi::ResourceClaim> &claim) {
+bool VolatileContentRepository::exists(const std::shared_ptr<minifi::ResourceClaim> &claim) {
   std::lock_guard<std::mutex> lock(map_mutex_);
   auto claim_check = master_list_.find(claim->getContentFullPath());
   if (claim_check != master_list_.end()) {
@@ -196,16 +184,14 @@ std::shared_ptr<io::BaseStream> VolatileContentRepository::read(
     if (ent == nullptr) {
       return nullptr;
     }
-    return std::make_shared<
-        io::AtomicEntryStream<std::shared_ptr<minifi::ResourceClaim>>>(claim,
-                                                                       ent);
+    return std::make_shared<io::AtomicEntryStream<std::shared_ptr<minifi::ResourceClaim>>>(claim,
+                                                                                           ent);
   }
 
   return nullptr;
 }
 
-bool VolatileContentRepository::remove(
-    const std::shared_ptr<minifi::ResourceClaim> &claim) {
+bool VolatileContentRepository::remove(const std::shared_ptr<minifi::ResourceClaim> &claim) {
   if (LIKELY(minimize_locking_ == true)) {
     std::lock_guard<std::mutex> lock(map_mutex_);
     auto ent = master_list_.find(claim->getContentFullPath());
@@ -237,8 +223,7 @@ bool VolatileContentRepository::remove(
     return true;
   }
 
-  logger_->log_info("Could not remove %s, may not exist",
-                    claim->getContentFullPath());
+  logger_->log_info("Could not remove %s, may not exist", claim->getContentFullPath());
   return false;
 }
 

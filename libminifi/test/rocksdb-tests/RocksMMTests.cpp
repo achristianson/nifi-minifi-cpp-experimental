@@ -37,8 +37,7 @@ TEST_CASE("DatabaseContentRepository Write/Read", "[RocksMMTest1]") {
   auto test_file = dir + "/testfile";
 
   auto configuration = std::make_shared<org::apache::nifi::minifi::Configure>();
-  configuration->set(
-      minifi::Configure::nifi_dbcontent_repository_directory_default, dir);
+  configuration->set(minifi::Configure::nifi_dbcontent_repository_directory_default, dir);
 
   auto dbr = std::make_shared<core::repository::DatabaseContentRepository>();
   REQUIRE(true == dbr->initialize(configuration));
@@ -50,8 +49,8 @@ TEST_CASE("DatabaseContentRepository Write/Read", "[RocksMMTest1]") {
   {
     auto mm = dbr->mmap(claim, 1024, true);
     REQUIRE(mm != nullptr);
-    std::memcpy(reinterpret_cast<char *>(mm->getData()),
-                write_test_string.c_str(), write_test_string.length());
+    std::memcpy(reinterpret_cast<char *>(mm->getData()), write_test_string.c_str(),
+                write_test_string.length());
   }
 
   {

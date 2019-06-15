@@ -40,19 +40,15 @@ namespace repository {
  */
 class VolatileContentRepository
     : public core::ContentRepository,
-      public virtual core::repository::VolatileRepository<
-          std::shared_ptr<minifi::ResourceClaim>> {
+      public virtual core::repository::VolatileRepository<std::shared_ptr<minifi::ResourceClaim>> {
  public:
   static const char *minimal_locking;
 
-  explicit VolatileContentRepository(
-      std::string name = getClassName<VolatileContentRepository>())
+  explicit VolatileContentRepository(std::string name = getClassName<VolatileContentRepository>())
       : core::SerializableComponent(name),
-        core::repository::VolatileRepository<
-            std::shared_ptr<minifi::ResourceClaim>>(name),
+        core::repository::VolatileRepository<std::shared_ptr<minifi::ResourceClaim>>(name),
         minimize_locking_(true),
-        logger_(
-            logging::LoggerFactory<VolatileContentRepository>::getLogger()) {
+        logger_(logging::LoggerFactory<VolatileContentRepository>::getLogger()) {
     max_count_ = 15000;
   }
   virtual ~VolatileContentRepository() {
@@ -83,9 +79,8 @@ class VolatileContentRepository
   template <class T>
   std::shared_ptr<T> mutate(
       const std::shared_ptr<minifi::ResourceClaim> &claim,
-      std::function<std::shared_ptr<T>(
-          const std::shared_ptr<minifi::ResourceClaim> &,
-          AtomicEntry<std::shared_ptr<minifi::ResourceClaim>> *)>
+      std::function<std::shared_ptr<T>(const std::shared_ptr<minifi::ResourceClaim> &,
+                                       AtomicEntry<std::shared_ptr<minifi::ResourceClaim>> *)>
           f);
 
   /**
@@ -103,8 +98,7 @@ class VolatileContentRepository
    * @return BaseMemoryMap shared pointer mapped directly to the memory
    */
   virtual std::shared_ptr<io::BaseMemoryMap> mmap(
-      const std::shared_ptr<minifi::ResourceClaim> &claim, size_t mapSize,
-      bool readOnly);
+      const std::shared_ptr<minifi::ResourceClaim> &claim, size_t mapSize, bool readOnly);
 
   /**
    * Creates readable stream.
@@ -122,9 +116,7 @@ class VolatileContentRepository
    * @return whether or not the claim is associated with content stored in
    * volatile memory.
    */
-  virtual bool close(const std::shared_ptr<minifi::ResourceClaim> &claim) {
-    return remove(claim);
-  }
+  virtual bool close(const std::shared_ptr<minifi::ResourceClaim> &claim) { return remove(claim); }
 
   /**
    * Closes the claim.
@@ -150,8 +142,7 @@ class VolatileContentRepository
   std::function<bool(std::shared_ptr<minifi::ResourceClaim>,
                      std::shared_ptr<minifi::ResourceClaim>)>
       resource_claim_comparator_;
-  std::function<bool(std::shared_ptr<minifi::ResourceClaim>)>
-      resource_claim_check_;
+  std::function<bool(std::shared_ptr<minifi::ResourceClaim>)> resource_claim_check_;
   std::function<void(std::shared_ptr<minifi::ResourceClaim>)> claim_reclaimer_;
 
   // mutex and master list that represent a cache of Atomic entries. this exists
@@ -160,8 +151,7 @@ class VolatileContentRepository
   // we can.
   std::mutex map_mutex_;
 
-  std::map<std::string, AtomicEntry<std::shared_ptr<minifi::ResourceClaim>> *>
-      master_list_;
+  std::map<std::string, AtomicEntry<std::shared_ptr<minifi::ResourceClaim>> *> master_list_;
 
   // logger
   std::shared_ptr<logging::Logger> logger_;
