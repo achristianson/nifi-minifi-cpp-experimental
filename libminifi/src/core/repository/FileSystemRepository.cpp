@@ -42,13 +42,11 @@ bool FileSystemRepository::initialize(const std::shared_ptr<minifi::Configure> &
 }
 void FileSystemRepository::stop() {}
 
-std::shared_ptr<io::BaseStream> FileSystemRepository::write(
-    const std::shared_ptr<minifi::ResourceClaim> &claim, bool append) {
+std::shared_ptr<io::BaseStream> FileSystemRepository::write(const std::shared_ptr<minifi::ResourceClaim> &claim, bool append) {
   return std::make_shared<io::FileStream>(claim->getContentFullPath(), append);
 }
 
-std::shared_ptr<io::BaseMemoryMap> FileSystemRepository::mmap(
-    const std::shared_ptr<minifi::ResourceClaim> &claim, size_t mapSize, bool readOnly) {
+std::shared_ptr<io::BaseMemoryMap> FileSystemRepository::mmap(const std::shared_ptr<minifi::ResourceClaim> &claim, size_t mapSize, bool readOnly) {
   return std::make_shared<io::FileMemoryMap>(claim->getContentFullPath(), mapSize, readOnly);
 }
 
@@ -57,8 +55,7 @@ bool FileSystemRepository::exists(const std::shared_ptr<minifi::ResourceClaim> &
   return file.good();
 }
 
-std::shared_ptr<io::BaseStream> FileSystemRepository::read(
-    const std::shared_ptr<minifi::ResourceClaim> &claim) {
+std::shared_ptr<io::BaseStream> FileSystemRepository::read(const std::shared_ptr<minifi::ResourceClaim> &claim) {
   return std::make_shared<io::FileStream>(claim->getContentFullPath(), 0, false);
 }
 

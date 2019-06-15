@@ -43,8 +43,7 @@ class MemoryMapManager {
    * @param map_obj the object to map
    * @return result of operation (true of succeeded)
    */
-  virtual std::shared_ptr<io::BaseMemoryMap> mmap(const std::shared_ptr<T> &mapObj, size_t mapSize,
-                                                  bool readOnly) = 0;
+  virtual std::shared_ptr<io::BaseMemoryMap> mmap(const std::shared_ptr<T> &mapObj, size_t mapSize, bool readOnly) = 0;
 };
 
 } /* namespace core */

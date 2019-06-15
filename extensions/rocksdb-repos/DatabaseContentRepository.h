@@ -37,9 +37,7 @@ class StringAppender : public rocksdb::AssociativeMergeOperator {
   // Constructor: specify delimiter
   explicit StringAppender() {}
 
-  virtual bool Merge(const rocksdb::Slice& key,
-                     const rocksdb::Slice* existing_value,
-                     const rocksdb::Slice& value, std::string* new_value,
+  virtual bool Merge(const rocksdb::Slice& key, const rocksdb::Slice* existing_value, const rocksdb::Slice& value, std::string* new_value,
                      rocksdb::Logger* logger) const {
     // Clear the *new_value for writing.
     if (nullptr == new_value) {
@@ -68,37 +66,23 @@ class StringAppender : public rocksdb::AssociativeMergeOperator {
  * DatabaseContentRepository is a content repository that stores data onto the
  * local file system.
  */
-class DatabaseContentRepository : public core::ContentRepository,
-                                  public core::Connectable {
+class DatabaseContentRepository : public core::ContentRepository, public core::Connectable {
  public:
-  DatabaseContentRepository(
-      std::string name = getClassName<DatabaseContentRepository>(),
-      utils::Identifier uuid = utils::Identifier())
-      : core::Connectable(name, uuid),
-        is_valid_(false),
-        db_(nullptr),
-        logger_(
-            logging::LoggerFactory<DatabaseContentRepository>::getLogger()) {}
+  DatabaseContentRepository(std::string name = getClassName<DatabaseContentRepository>(), utils::Identifier uuid = utils::Identifier())
+      : core::Connectable(name, uuid), is_valid_(false), db_(nullptr), logger_(logging::LoggerFactory<DatabaseContentRepository>::getLogger()) {}
   virtual ~DatabaseContentRepository() { stop(); }
 
-  virtual bool initialize(
-      const std::shared_ptr<minifi::Configure>& configuration);
+  virtual bool initialize(const std::shared_ptr<minifi::Configure>& configuration);
 
   virtual void stop();
 
-  virtual std::shared_ptr<io::BaseStream> write(
-      const std::shared_ptr<minifi::ResourceClaim>& claim, bool append = false);
+  virtual std::shared_ptr<io::BaseStream> write(const std::shared_ptr<minifi::ResourceClaim>& claim, bool append = false);
 
-  virtual std::shared_ptr<io::BaseMemoryMap> mmap(
-      const std::shared_ptr<minifi::ResourceClaim>& claim, size_t mapSize,
-      bool readOnly);
+  virtual std::shared_ptr<io::BaseMemoryMap> mmap(const std::shared_ptr<minifi::ResourceClaim>& claim, size_t mapSize, bool readOnly);
 
-  virtual std::shared_ptr<io::BaseStream> read(
-      const std::shared_ptr<minifi::ResourceClaim>& claim);
+  virtual std::shared_ptr<io::BaseStream> read(const std::shared_ptr<minifi::ResourceClaim>& claim);
 
-  virtual bool close(const std::shared_ptr<minifi::ResourceClaim>& claim) {
-    return remove(claim);
-  }
+  virtual bool close(const std::shared_ptr<minifi::ResourceClaim>& claim) { return remove(claim); }
 
   virtual bool remove(const std::shared_ptr<minifi::ResourceClaim>& claim);
 

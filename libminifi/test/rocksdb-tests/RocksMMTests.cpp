@@ -49,8 +49,7 @@ TEST_CASE("DatabaseContentRepository Write/Read", "[RocksMMTest1]") {
   {
     auto mm = dbr->mmap(claim, 1024, true);
     REQUIRE(mm != nullptr);
-    std::memcpy(reinterpret_cast<char *>(mm->getData()), write_test_string.c_str(),
-                write_test_string.length());
+    std::memcpy(reinterpret_cast<char *>(mm->getData()), write_test_string.c_str(), write_test_string.length());
   }
 
   {

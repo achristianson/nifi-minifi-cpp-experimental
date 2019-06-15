@@ -54,8 +54,7 @@ TEST_CASE("MemoryMap FileSystemRepository Write", "[MemoryMapTest3]") {
   auto claim = std::make_shared<minifi::ResourceClaim>(test_file, fsr);
   auto mm = fsr->mmap(claim, 1024, false);
   std::string write_test_string("write test");
-  std::memcpy(reinterpret_cast<char *>(mm->getData()), write_test_string.c_str(),
-              write_test_string.length());
+  std::memcpy(reinterpret_cast<char *>(mm->getData()), write_test_string.c_str(), write_test_string.length());
   std::string read_string(reinterpret_cast<const char *>(mm->getData()));
   std::stringstream iss;
   {
@@ -79,8 +78,7 @@ TEST_CASE("MemoryMap VolatileContentRepository Write/Read", "[MemoryMapTest3]") 
 
   {
     auto mm = vr->mmap(claim, 1024, false);
-    std::memcpy(reinterpret_cast<char *>(mm->getData()), write_test_string.c_str(),
-                write_test_string.length());
+    std::memcpy(reinterpret_cast<char *>(mm->getData()), write_test_string.c_str(), write_test_string.length());
   }
 
   {

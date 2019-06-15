@@ -33,11 +33,8 @@ namespace io {
 template <typename T>
 class AtomicEntryMemoryMap : public BaseMemoryMap {
  public:
-  AtomicEntryMemoryMap(const T key, core::repository::AtomicEntry<T> *entry, size_t map_size,
-                       bool readOnly)
-      : key_(key),
-        entry_(entry),
-        logger_(logging::LoggerFactory<AtomicEntryMemoryMap()>::getLogger()) {
+  AtomicEntryMemoryMap(const T key, core::repository::AtomicEntry<T> *entry, size_t map_size, bool readOnly)
+      : key_(key), entry_(entry), logger_(logging::LoggerFactory<AtomicEntryMemoryMap()>::getLogger()) {
     if (readOnly) {
       throw std::runtime_error("AtomicEntryMemoryMap does not support readOnly mode");
     }
