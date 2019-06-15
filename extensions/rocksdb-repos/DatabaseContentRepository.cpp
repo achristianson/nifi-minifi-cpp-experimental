@@ -72,32 +72,22 @@ std::shared_ptr<io::BaseStream> DatabaseContentRepository::write(const std::shar
 }
 
 std::shared_ptr<io::BaseMemoryMap> DatabaseContentRepository::mmap(
-    const std::shared_ptr<minifi::ResourceClaim> &claim, size_t mapSize) {
+    const std::shared_ptr<minifi::ResourceClaim> &claim, size_t map_size) {
   // here, because the underlying does not support direct mapping of the value
   // to memory, we read the entire value in to memory, then write it back to the
   // db upon closure of the MemoryMap
   std::vector<uint8_t> buf;
+  buf.resize(map_size);
   auto rs = read(claim);
   int ret;
-  int inc_size = 4096;
-  size_t read_size = 0;
 
-  while (true) {
-    // Don't read more than config limit or the size of the buffer
-    buf.reserve(buf.size() + inc_size);
-    ret = rs->readData(buf.data(), inc_size);
+  ret = rs->readData(buf.data(), map_size);
 
-    if (ret < 0) {
-      return nullptr; // Stream error
-    } else if (ret == 0) {
-      break; // End of stream, no more data
-    }
-
-    read_size += ret;
-    buf.resize(read_size);
+  if (ret < 0) {
+    return nullptr; // Stream error
   }
 
-  auto mm = std::make_shared<io::PassthroughMemoryMap>(buf.data(), read_size);
+  auto mm = std::make_shared<io::PassthroughMemoryMap>(buf.data(), map_size);
   mm->registerUnmapHook([this, claim](void *data, size_t map_size) {
     auto ws = write(claim);
     if (ws->writeData(reinterpret_cast<uint8_t *>(data), map_size) != 0) {
