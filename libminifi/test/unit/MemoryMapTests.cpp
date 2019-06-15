@@ -64,7 +64,25 @@ TEST_CASE("MemoryMap FileSystemRepository Write", "[MemoryMapTest3]") {
   REQUIRE(read_string == "write test");
 }
 
-TEST_CASE("MemoryMap VolatileContentRepository Write/Read", "[MemoryMapTest3]") {
+TEST_CASE("MemoryMap FileSystemRepository RO Read", "[MemoryMapTest3]") {
+  auto fsr = std::make_shared<core::repository::FileSystemRepository>();
+  TestController testController;
+  char format[] = "/tmp/testRepo.XXXXXX";
+  auto dir = std::string(testController.createTempDirectory(format));
+  auto test_file = dir + "/testfile";
+
+  {
+    std::ofstream os(test_file);
+    os << "hello";
+  }
+
+  auto claim = std::make_shared<minifi::ResourceClaim>(test_file, fsr);
+  auto mm = fsr->mmap(claim, 1024, true);
+  std::string read_string(reinterpret_cast<const char *>(mm->getData()));
+  REQUIRE(read_string == "hello");
+}
+
+TEST_CASE("MemoryMap VolatileContentRepository Write/Read", "[MemoryMapTest5]") {
   auto vr = std::make_shared<core::repository::VolatileContentRepository>();
   auto c = std::make_shared<minifi::Configure>();
   vr->initialize(c);
@@ -86,4 +104,27 @@ TEST_CASE("MemoryMap VolatileContentRepository Write/Read", "[MemoryMapTest3]") 
     std::string read_string(reinterpret_cast<const char *>(mm->getData()));
     REQUIRE(read_string == "test read val");
   }
+}
+
+TEST_CASE("MemoryMap VolatileContentRepository RO Write/Read", "[MemoryMapTest6]") {
+  auto vr = std::make_shared<core::repository::VolatileContentRepository>();
+  auto c = std::make_shared<minifi::Configure>();
+  vr->initialize(c);
+  TestController testController;
+  char format[] = "/tmp/testRepo.XXXXXX";
+  auto dir = std::string(testController.createTempDirectory(format));
+  auto test_file = dir + "/testfile";
+  std::string write_test_string("test read val");
+
+  auto claim = std::make_shared<minifi::ResourceClaim>(test_file, vr);
+
+  // exception should be thrown because read-only is not supported with VolatileContentRepo
+  bool exception_thrown = false;
+  try {
+    auto mm = vr->mmap(claim, 1024, true);
+  } catch (std::exception &e) {
+    exception_thrown = true;
+  }
+
+  REQUIRE(exception_thrown);
 }
