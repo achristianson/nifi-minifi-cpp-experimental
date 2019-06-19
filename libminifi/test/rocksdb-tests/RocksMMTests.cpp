@@ -30,7 +30,7 @@
 #include "properties/Configure.h"
 #include "provenance/Provenance.h"
 
-TEST_CASE("DatabaseContentRepository Write/Read", "[RocksMMTest1]") {
+TEST_CASE("DatabaseContentRepository Write/Read", "[RocksMMWriteRead]") {
   TestController testController;
   char format[] = "/tmp/testRepo.XXXXXX";
   auto dir = std::string(testController.createTempDirectory(format));
@@ -47,7 +47,7 @@ TEST_CASE("DatabaseContentRepository Write/Read", "[RocksMMTest1]") {
   auto claim = std::make_shared<minifi::ResourceClaim>(test_file, dbr);
 
   {
-    auto mm = dbr->mmap(claim, 1024, true);
+    auto mm = dbr->mmap(claim, 1024, false);
     REQUIRE(mm != nullptr);
     std::memcpy(reinterpret_cast<char *>(mm->getData()), write_test_string.c_str(), write_test_string.length());
   }
@@ -57,5 +57,51 @@ TEST_CASE("DatabaseContentRepository Write/Read", "[RocksMMTest1]") {
     REQUIRE(mm != nullptr);
     std::string read_string(reinterpret_cast<const char *>(mm->getData()));
     REQUIRE(read_string == "test read val");
+  }
+}
+
+TEST_CASE("DatabaseContentRepository Resize", "[RocksMMResize]") {
+  TestController testController;
+  char format[] = "/tmp/testRepo.XXXXXX";
+  auto dir = std::string(testController.createTempDirectory(format));
+  auto test_file = dir + "/testfile";
+
+  auto configuration = std::make_shared<org::apache::nifi::minifi::Configure>();
+  configuration->set(minifi::Configure::nifi_dbcontent_repository_directory_default, dir);
+
+  std::string write_test_string("write test");
+  std::string write_test_string_resized("write testtset etirw");
+
+  {
+    auto dbr = std::make_shared<core::repository::DatabaseContentRepository>();
+    REQUIRE(true == dbr->initialize(configuration));
+    auto claim = std::make_shared<minifi::ResourceClaim>(test_file, dbr);
+    auto mm = dbr->mmap(claim, 11, false);
+    REQUIRE(mm != nullptr);
+    REQUIRE(mm->getSize() == 11);
+    std::memcpy(reinterpret_cast<char *>(mm->getData()), write_test_string.c_str(), write_test_string.length() + 1);
+  }
+
+  {
+    auto dbr = std::make_shared<core::repository::DatabaseContentRepository>();
+    REQUIRE(true == dbr->initialize(configuration));
+    auto claim = std::make_shared<minifi::ResourceClaim>(test_file, dbr);
+    auto mm = dbr->mmap(claim, 11, false);
+    REQUIRE(mm != nullptr);
+    REQUIRE(mm->getSize() == 11);
+    mm->resize(21);
+    REQUIRE(mm->getSize() == 21);
+    std::memcpy(reinterpret_cast<char *>(mm->getData()), write_test_string_resized.c_str(), write_test_string_resized.length() + 1);
+  }
+
+  {
+    auto dbr = std::make_shared<core::repository::DatabaseContentRepository>();
+    REQUIRE(true == dbr->initialize(configuration));
+    auto claim = std::make_shared<minifi::ResourceClaim>(test_file, dbr);
+    auto mm = dbr->mmap(claim, 21, true);
+    REQUIRE(mm != nullptr);
+    REQUIRE(mm->getSize() == 21);
+    std::string read_string(reinterpret_cast<const char *>(mm->getData()));
+    REQUIRE(read_string == write_test_string_resized);
   }
 }

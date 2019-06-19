@@ -65,7 +65,16 @@ class AtomicEntryMemoryMap : public BaseMemoryMap {
       return nullptr;
     }
 
-    return (void *)(value_->getBuffer());
+    return reinterpret_cast<void *>(value_->getBuffer());
+  }
+
+  /**
+   * Resize the underlying file.
+   * @return pointer to the remapped data
+   */
+  virtual void *resize(size_t new_size) {
+    value_->resize(new_size);
+    return reinterpret_cast<void *>(value_->getBuffer());
   }
 
  protected:

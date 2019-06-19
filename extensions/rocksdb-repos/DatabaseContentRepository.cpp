@@ -49,7 +49,7 @@ bool DatabaseContentRepository::initialize(const std::shared_ptr<minifi::Configu
     logger_->log_debug("NiFi Content DB Repository database open %s success", directory_);
     is_valid_ = true;
   } else {
-    logger_->log_error("NiFi Content DB Repository database open %s fail", directory_);
+    logger_->log_error("NiFi Content DB Repository database open %s fail due to %s", directory_, status.ToString());
     is_valid_ = false;
   }
   return is_valid_;
@@ -73,9 +73,8 @@ std::shared_ptr<io::BaseStream> DatabaseContentRepository::write(const std::shar
 
 std::shared_ptr<io::BaseMemoryMap> DatabaseContentRepository::mmap(const std::shared_ptr<minifi::ResourceClaim> &claim, size_t map_size,
                                                                    bool readOnly) {
-  // here, because the underlying does not support direct mapping of the value
-  // to memory, we read the entire value in to memory, then write (iff not
-  // readOnly) it back to the db upon closure of the MemoryMap
+  /* Because the underlying does not support direct mapping of the value to memory, we read the entire value in to memory, then write (iff not
+   * readOnly) it back to the db upon closure of the MemoryMap */
   auto buf = std::make_shared<std::vector<uint8_t>>();
   buf->resize(map_size);
   auto rs = read(claim);
@@ -84,17 +83,21 @@ std::shared_ptr<io::BaseMemoryMap> DatabaseContentRepository::mmap(const std::sh
     int ret;
 
     ret = rs->readData(buf->data(), map_size);
-
-    // zero-out remaining buf
-    auto zero_start = std::max(0, ret);
-    memset(buf->data(), zero_start, map_size - zero_start);
   }
 
-  auto mm = std::make_shared<io::PassthroughMemoryMap>(buf->data(), map_size);
+  auto dat_cb = [buf]() { return buf->data(); };
+  auto size_cb = [buf]() { return buf->size(); };
+  auto resize_cb = [buf](size_t new_size) {
+    buf->resize(new_size);
+    return buf->data();
+  };
+
+  auto mm = std::make_shared<io::PassthroughMemoryMap>(dat_cb, size_cb, resize_cb);
 
   if (!readOnly) {
-    auto ws = write(claim);
-    mm->registerUnmapHook([ws, claim, buf](void *data, size_t map_size) {
+    mm->registerUnmapHook([this, claim, buf](void *data, size_t map_size) {
+      remove(claim);
+      auto ws = write(claim);
       if (ws->writeData(reinterpret_cast<uint8_t *>(data), map_size) != 0) {
         throw std::runtime_error("Failed to write memory map data to db: " + claim->getContentFullPath());
       }

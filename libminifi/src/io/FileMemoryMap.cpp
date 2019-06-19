@@ -70,7 +70,7 @@ FileMemoryMap::FileMemoryMap(const std::string &path, size_t map_size, bool read
   if (file_data_ == MAP_FAILED) {
     throw std::runtime_error("Failed to memory map file: " + path);
   }
-}  // namespace io
+}
 
 void FileMemoryMap::unmap() {
   if (file_data_ != nullptr) {
@@ -94,8 +94,27 @@ void *FileMemoryMap::getData() { return file_data_; }
 
 size_t FileMemoryMap::getSize() { return length_; }
 
+void *FileMemoryMap::resize(size_t new_size) {
+  if (file_data_ == nullptr) {
+    throw std::runtime_error("Cannot resize unmapped file: " + path_);
+  }
+
+  auto new_data = mremap(file_data_, length_, new_size, MREMAP_MAYMOVE);
+
+  if (new_data == MAP_FAILED || new_data == nullptr) {
+    if (fd_ > 0) {
+      close(fd_);
+    }
+    throw std::runtime_error("Failed to memory remap file: " + path_);
+  }
+
+  file_data_ = new_data;
+  length_ = new_size;
+  return new_data;
+}
+
 }  // namespace io
 }  // namespace minifi
 }  // namespace nifi
 }  // namespace apache
-} /* namespace org */
+}  // namespace org

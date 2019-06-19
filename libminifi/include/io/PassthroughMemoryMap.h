@@ -18,11 +18,11 @@
 
 #ifndef LIBMINIFI_INCLUDE_IO_PASSTHROUGHMEMORYMAP_H_
 #define LIBMINIFI_INCLUDE_IO_PASSTHROUGHMEMORYMAP_H_
-#include "BaseMemoryMap.h"
-#include "Serializable.h"
 #include <cstdint>
 #include <functional>
 #include <iostream>
+#include "BaseMemoryMap.h"
+#include "Serializable.h"
 
 namespace org {
 namespace apache {
@@ -34,10 +34,9 @@ namespace io {
  * PassthroughMemoryMap allows access to an existing underlying memory buffer.
  */
 class PassthroughMemoryMap : public BaseMemoryMap {
-
-public:
-  PassthroughMemoryMap(void *buf, size_t map_size)
-      : buf_(buf), size_(map_size) {}
+ public:
+  PassthroughMemoryMap(std::function<void *()> buf_fn, std::function<size_t()> map_size_fn, std::function<void *(size_t)> resize_fn)
+      : buf_fn_(buf_fn), size_fn_(map_size_fn), resize_fn_(resize_fn) {}
 
   virtual ~PassthroughMemoryMap() { unmap(); }
 
@@ -45,37 +44,41 @@ public:
    * Gets a the address of the mapped data.
    * @return pointer to the mapped data, or nullptr if not mapped
    **/
-  virtual void *getData() { return buf_; }
+  virtual void *getData() { return buf_fn_(); }
 
   /**
    * Gets the size of the memory map.
    * @return size of memory map
    */
-  virtual size_t getSize() { return size_; }
+  virtual size_t getSize() { return size_fn_(); }
+
+  /**
+   * Resize the underlying file.
+   * @return pointer to the remapped data
+   */
+  virtual void *resize(size_t new_size) { return resize_fn_(new_size); }
 
   /**
    * Explicitly unmap the memory. Memory will otherwise be unmapped at
    * destruction. After this is called, getData will return nullptr.
    */
   virtual void unmap() {
+    auto s = size_fn_();
+    auto buf = buf_fn_();
     for (const auto &f : unmap_hooks_) {
-      f(buf_, size_);
+      f(buf, s);
     }
-
-    buf_ = nullptr;
-    size_ = -1;
   }
 
   /**
    * Registers a callback function to be called when the memory is unmapped.
    */
-  void registerUnmapHook(std::function<void(void *, size_t)> f) {
-    unmap_hooks_.push_back(f);
-  }
+  void registerUnmapHook(std::function<void(void *, size_t)> f) { unmap_hooks_.push_back(f); }
 
-protected:
-  void *buf_;
-  size_t size_;
+ protected:
+  std::function<void *()> buf_fn_;
+  std::function<size_t()> size_fn_;
+  std::function<void *(size_t)> resize_fn_;
 
   std::vector<std::function<void(void *, size_t)>> unmap_hooks_;
 };

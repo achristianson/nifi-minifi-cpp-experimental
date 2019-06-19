@@ -61,6 +61,12 @@ class FileMemoryMap : public io::BaseMemoryMap {
   virtual size_t getSize();
 
   /**
+   * Resize the underlying file.
+   * @return pointer to the remapped data
+   */
+  virtual void *resize(size_t new_size);
+
+  /**
    * Explicitly unmap the memory. Memory will otherwise be unmapped at
    * destruction. After this is called, getData will return nullptr.
    */

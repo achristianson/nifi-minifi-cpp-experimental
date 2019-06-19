@@ -18,8 +18,8 @@
 
 #ifndef LIBMINIFI_INCLUDE_IO_BASEMEMORYMAP_H_
 #define LIBMINIFI_INCLUDE_IO_BASEMEMORYMAP_H_
-#include <iostream>
 #include <cstdint>
+#include <iostream>
 #include "Serializable.h"
 
 namespace org {
@@ -36,12 +36,8 @@ namespace io {
  * Extensions may be thread safe and thus shareable, but that is up to the implementation.
  */
 class BaseMemoryMap {
-
  public:
-
-  virtual ~BaseMemoryMap() {
-
-  }
+  virtual ~BaseMemoryMap() {}
 
   /**
    * Gets a the address of the mapped data.
@@ -56,12 +52,17 @@ class BaseMemoryMap {
   virtual size_t getSize() = 0;
 
   /**
+   * Resize the underlying object.
+   * @return pointer to the remapped data
+   */
+  virtual void *resize(size_t newSize) = 0;
+
+  /**
    * Explicitly unmap the memory. Memory will otherwise be unmapped at destruction.
    * After this is called, getData will return nullptr.
    */
   virtual void unmap() = 0;
-}
-;
+};
 
 } /* namespace io */
 } /* namespace minifi */
