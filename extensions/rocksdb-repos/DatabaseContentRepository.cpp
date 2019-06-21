@@ -39,8 +39,8 @@ bool DatabaseContentRepository::initialize(const std::shared_ptr<minifi::Configu
   }
   rocksdb::Options options;
   options.create_if_missing = true;
-  options.use_direct_io_for_flush_and_compaction = true;
-  options.use_direct_reads = true;
+//  options.use_direct_io_for_flush_and_compaction = true;
+//  options.use_direct_reads = true;
   options.merge_operator = std::make_shared<StringAppender>();
   options.error_if_exists = false;
   options.max_successive_merges = 0;
@@ -73,8 +73,10 @@ std::shared_ptr<io::BaseStream> DatabaseContentRepository::write(const std::shar
 
 std::shared_ptr<io::BaseMemoryMap> DatabaseContentRepository::mmap(const std::shared_ptr<minifi::ResourceClaim> &claim, size_t map_size,
                                                                    bool readOnly) {
-  /* Because the underlying does not support direct mapping of the value to memory, we read the entire value in to memory, then write (iff not
-   * readOnly) it back to the db upon closure of the MemoryMap */
+  /**
+   * Because the underlying does not support direct mapping of the value to memory, we read the entire value in to memory, then write (iff not
+   * readOnly) it back to the db upon closure of the MemoryMap
+   */
   auto buf = std::make_shared<std::vector<uint8_t>>();
   buf->resize(map_size);
   auto rs = read(claim);
@@ -96,6 +98,10 @@ std::shared_ptr<io::BaseMemoryMap> DatabaseContentRepository::mmap(const std::sh
 
   if (!readOnly) {
     mm->registerUnmapHook([this, claim, buf](void *data, size_t map_size) {
+      /**
+       * Writing to the DatabaseContentRepository seems to only support append, and seek(0) does not seem to work (BUG?).
+       * So, we have to remove the record first.
+       */
       remove(claim);
       auto ws = write(claim);
       if (ws->writeData(reinterpret_cast<uint8_t *>(data), map_size) != 0) {
