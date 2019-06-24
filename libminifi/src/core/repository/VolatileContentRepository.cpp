@@ -143,8 +143,8 @@ std::shared_ptr<io::BaseStream> VolatileContentRepository::write(const std::shar
 std::shared_ptr<io::BaseMemoryMap> VolatileContentRepository::mmap(const std::shared_ptr<minifi::ResourceClaim> &claim, size_t mapSize,
                                                                    bool readOnly) {
   return mutate<io::BaseMemoryMap>(
-      claim, [mapSize, readOnly](const std::shared_ptr<minifi::ResourceClaim> &claim, AtomicEntry<std::shared_ptr<minifi::ResourceClaim>> *ent) {
-        return std::make_shared<io::AtomicEntryMemoryMap<std::shared_ptr<minifi::ResourceClaim>>>(claim, ent, mapSize, readOnly);
+      claim, [mapSize](const std::shared_ptr<minifi::ResourceClaim> &claim, AtomicEntry<std::shared_ptr<minifi::ResourceClaim>> *ent) {
+        return std::make_shared<io::AtomicEntryMemoryMap<std::shared_ptr<minifi::ResourceClaim>>>(claim, ent, mapSize);
       });
 }
 
