@@ -430,6 +430,7 @@ endif()
 
 ## Add the rocks DB extension
 if (NOT ROCKSDB_FOUND OR BUILD_ROCKSDB)
+	set(USE_RTTI "TRUE")
 	set(BUILD_RD "TRUE")
 endif()
 
