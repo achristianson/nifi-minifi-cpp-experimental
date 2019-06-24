@@ -72,7 +72,7 @@ std::shared_ptr<io::BaseStream> DatabaseContentRepository::write(const std::shar
 }
 
 std::shared_ptr<io::BaseMemoryMap> DatabaseContentRepository::mmap(const std::shared_ptr<minifi::ResourceClaim> &claim, size_t map_size,
-                                                                   bool readOnly) {
+                                                                   bool read_only) {
   /**
    * Because the underlying does not support direct mapping of the value to memory, we read the entire value in to memory, then write (iff not
    * readOnly) it back to the db upon closure of the MemoryMap
@@ -96,7 +96,7 @@ std::shared_ptr<io::BaseMemoryMap> DatabaseContentRepository::mmap(const std::sh
 
   auto mm = std::make_shared<io::PassthroughMemoryMap>(dat_cb, size_cb, resize_cb);
 
-  if (!readOnly) {
+  if (!read_only) {
     mm->registerUnmapHook([this, claim, buf](void *data, size_t map_size) {
       /**
        * Writing to the DatabaseContentRepository seems to only support append, and seek(0) does not seem to work (BUG?).
