@@ -25,6 +25,7 @@
 #include "core/logging/LoggerConfiguration.h"
 #include "core/repository/VolatileRepository.h"
 #include "io/AtomicEntryStream.h"
+#include "io/AtomicEntryMemoryMap.h"
 #include "properties/Configure.h"
 namespace org {
 namespace apache {
@@ -73,12 +74,10 @@ class VolatileContentRepository : public core::ContentRepository,
   virtual void stop();
 
   /**
-   * Template for consistent implementations of mutation ops.
+   * Generic operation which mutates the state of an object in the repo.
    */
-  template <class T>
-  std::shared_ptr<T> mutate(
-      const std::shared_ptr<minifi::ResourceClaim> &claim,
-      std::function<std::shared_ptr<T>(const std::shared_ptr<minifi::ResourceClaim> &, AtomicEntry<std::shared_ptr<minifi::ResourceClaim>> *)> f);
+  template <class T, template<typename> class U, typename... V>
+  std::shared_ptr<T> mutate(const std::shared_ptr<minifi::ResourceClaim> &claim, V... v);
 
   /**
    * Creates writable stream.
