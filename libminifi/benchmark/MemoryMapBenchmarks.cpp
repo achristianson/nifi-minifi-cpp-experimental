@@ -112,7 +112,7 @@ typedef MemoryMapBMFixture<core::repository::DatabaseContentRepository> Database
 
 template<class T>
 void mmap_read(T *fixture, benchmark::State &st) {
-  while (st.KeepRunning()) {
+  for (auto _ : st) {
     auto mm = fixture->repo_->mmap(fixture->claim_, fixture->test_string_.length(), true);
     fixture->validate_string(reinterpret_cast<const char *>(mm->getData()));
   }
@@ -124,7 +124,7 @@ template<class T>
 void mmap_read_random(T *fixture, benchmark::State &st) {
   auto r = fixture->random_points();
   auto mm = fixture->repo_->mmap(fixture->claim_, fixture->test_string_.length(), true);
-  while (st.KeepRunning()) {
+  for (auto _ : st) {
     auto data = reinterpret_cast<char *>(mm->getData());
     for (size_t p : r) {
       fixture->validate_byte(p, data[p]);
@@ -136,7 +136,7 @@ void mmap_read_random(T *fixture, benchmark::State &st) {
 
 template<class T>
 void mmap_write_read(T *fixture, benchmark::State &st) {
-  while (st.KeepRunning()) {
+  for (auto _ : st) {
     fixture->repo_->remove(fixture->claim_);
     auto mm = fixture->repo_->mmap(fixture->claim_, fixture->test_string_.length(), false);
     memcpy(mm->getData(), &(fixture->expected_string_[0]), fixture->test_string_.length());
@@ -148,7 +148,7 @@ void mmap_write_read(T *fixture, benchmark::State &st) {
 
 template<class T>
 void cb_read(T *fixture, benchmark::State &st) {
-  while (st.KeepRunning()) {
+  for (auto _ : st) {
     auto rs = fixture->repo_->read(fixture->claim_);
     std::vector<uint8_t> buf;
     rs->readData(buf, fixture->test_string_.length() + 1);
@@ -162,7 +162,7 @@ template<class T>
 void cb_read_random(T *fixture, benchmark::State &st) {
   auto r = fixture->random_points();
   auto rs = fixture->repo_->read(fixture->claim_);
-  while (st.KeepRunning()) {
+  for (auto _ : st) {
     for (size_t p : r) {
       rs->seek(p);
       char b;
@@ -174,9 +174,9 @@ void cb_read_random(T *fixture, benchmark::State &st) {
   fixture->repo_->stop();
 }
 
-template<class T>
+template <class T>
 void cb_write_read(T *fixture, benchmark::State &st) {
-  while (st.KeepRunning()) {
+  for (auto _ : st) {
     {
       fixture->repo_->remove(fixture->claim_);
       auto ws = fixture->repo_->write(fixture->claim_, false);
@@ -188,6 +188,7 @@ void cb_write_read(T *fixture, benchmark::State &st) {
     rs->readData(buf, fixture->test_string_.length() + 1);
     fixture->validate_string(reinterpret_cast<const char *>(&buf[0]));
   }
+
 
   fixture->repo_->stop();
 }
