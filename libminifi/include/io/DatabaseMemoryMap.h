@@ -31,56 +31,64 @@ namespace minifi {
 namespace io {
 
 /**
- * PassthroughMemoryMap allows access to an existing underlying memory buffer.
+ * DatabaseMemoryMap allows access to an existing underlying memory buffer.
  */
-class PassthroughMemoryMap : public BaseMemoryMap {
+class DatabaseMemoryMap : public BaseMemoryMap {
  public:
-  PassthroughMemoryMap(std::function<void *()> buf_fn, std::function<size_t()> map_size_fn, std::function<void *(size_t)> resize_fn)
-      : buf_fn_(buf_fn), size_fn_(map_size_fn), resize_fn_(resize_fn) {}
+  DatabaseMemoryMap(const std::shared_ptr<minifi::ResourceClaim> &claim, size_t map_size, std::function<std::shared_ptr<io::BaseStream>(const std::shared_ptr<minifi::ResourceClaim> &)> write_fn, bool read_only) : claim_(claim), write_fn_(write_fn), read_only_(read_only) {
+    buf.resize(map_size);
+  }
 
-  virtual ~PassthroughMemoryMap() { unmap(); }
+  virtual ~DatabaseMemoryMap() { unmap(); }
 
   /**
    * Gets a the address of the mapped data.
    * @return pointer to the mapped data, or nullptr if not mapped
    **/
-  virtual void *getData() { return buf_fn_(); }
+  virtual void *getData() {
+    return reinterpret_cast<void *>(&buf[0]);
+  }
 
   /**
    * Gets the size of the memory map.
    * @return size of memory map
    */
-  virtual size_t getSize() { return size_fn_(); }
+  virtual size_t getSize() { return buf.size(); }
 
   /**
-   * Resize the underlying file.
+   * Resize the underlying buffer.
    * @return pointer to the remapped data
    */
-  virtual void *resize(size_t new_size) { return resize_fn_(new_size); }
+  virtual void *resize(size_t new_size) {
+    buf.resize(new_size);
+    return reinterpret_cast<void *>(&buf[0]);
+  }
 
   /**
    * Explicitly unmap the memory. Memory will otherwise be unmapped at
    * destruction. After this is called, getData will return nullptr.
    */
   virtual void unmap() {
-    auto s = size_fn_();
-    auto buf = buf_fn_();
-    for (const auto &f : unmap_hooks_) {
-      f(buf, s);
+    if (!read_only_) {
+      commit();
     }
   }
 
   /**
-   * Registers a callback function to be called when the memory is unmapped.
+   * Commits the changes in memory to the underlying DB.
    */
-  void registerUnmapHook(std::function<void(void *, size_t)> f) { unmap_hooks_.push_back(f); }
+  void commit() {
+    auto ws = write_fn_(claim_);
+    if (ws->writeData(&buf[0], getSize()) != 0) {
+      throw std::runtime_error("Failed to write memory map data to db: " + claim_->getContentFullPath());
+    }
+  }
 
  protected:
-  std::function<void *()> buf_fn_;
-  std::function<size_t()> size_fn_;
-  std::function<void *(size_t)> resize_fn_;
-
-  std::vector<std::function<void(void *, size_t)>> unmap_hooks_;
+  std::vector<uint8_t> buf;
+  std::shared_ptr<minifi::ResourceClaim> claim_;
+  std::function<std::shared_ptr<io::BaseStream>(const std::shared_ptr<minifi::ResourceClaim> &)> write_fn_;
+  bool read_only_;
 };
 
 } /* namespace io */

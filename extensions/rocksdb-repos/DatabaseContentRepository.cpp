@@ -20,7 +20,7 @@
 #include <memory>
 #include <string>
 #include "RocksDbStream.h"
-#include "io/PassthroughMemoryMap.h"
+#include "io/DatabaseMemoryMap.h"
 #include "rocksdb/merge_operator.h"
 
 namespace org {
@@ -77,37 +77,16 @@ std::shared_ptr<io::BaseMemoryMap> DatabaseContentRepository::mmap(const std::sh
    * Because the underlying does not support direct mapping of the value to memory, we read the entire value in to memory, then write (iff not
    * readOnly) it back to the db upon closure of the MemoryMap
    */
-  auto buf = std::make_shared<std::vector<uint8_t>>();
-  buf->resize(map_size);
+
+  auto mm = std::make_shared<io::DatabaseMemoryMap>(claim, map_size, [this](const std::shared_ptr<minifi::ResourceClaim> &claim) {
+    remove(claim);
+    return write(claim);
+  }, read_only);
+
   auto rs = read(claim);
 
   if (rs != nullptr) {
-    int ret;
-
-    ret = rs->readData(buf->data(), map_size);
-  }
-
-  auto dat_cb = [buf]() { return buf->data(); };
-  auto size_cb = [buf]() { return buf->size(); };
-  auto resize_cb = [buf](size_t new_size) {
-    buf->resize(new_size);
-    return buf->data();
-  };
-
-  auto mm = std::make_shared<io::PassthroughMemoryMap>(dat_cb, size_cb, resize_cb);
-
-  if (!read_only) {
-    mm->registerUnmapHook([this, claim, buf](void *data, size_t map_size) {
-      /**
-       * Writing to the DatabaseContentRepository seems to only support append, and seek(0) does not seem to work (BUG?).
-       * So, we have to remove the record first.
-       */
-      remove(claim);
-      auto ws = write(claim);
-      if (ws->writeData(reinterpret_cast<uint8_t *>(data), map_size) != 0) {
-        throw std::runtime_error("Failed to write memory map data to db: " + claim->getContentFullPath());
-      }
-    });
+    rs->readData(reinterpret_cast<uint8_t *>(mm->getData()), map_size);
   }
 
   return mm;
