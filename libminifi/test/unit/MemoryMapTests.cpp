@@ -166,13 +166,14 @@ TEST_CASE("MemoryMap VolatileContentRepository RO Write/Read", "[MemoryMapTestVR
 
   auto claim = std::make_shared<minifi::ResourceClaim>(test_file, vr);
 
-  // exception should be thrown because read-only is not supported with VolatileContentRepo
-  bool exception_thrown = false;
-  try {
+  {
     auto mm = vr->mmap(claim, 1024, true);
-  } catch (std::exception &e) {
-    exception_thrown = true;
+    std::memcpy(reinterpret_cast<char *>(mm->getData()), write_test_string.c_str(), write_test_string.length());
   }
 
-  REQUIRE(exception_thrown);
+  {
+    auto mm = vr->mmap(claim, 1024, true);
+    std::string read_string(reinterpret_cast<const char *>(mm->getData()));
+    REQUIRE(read_string == "test read val");
+  }
 }
