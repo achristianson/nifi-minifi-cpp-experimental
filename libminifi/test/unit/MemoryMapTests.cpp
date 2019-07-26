@@ -58,8 +58,8 @@ TEST_CASE("MemoryMap FileSystemRepository RO Read", "[MemoryMapTestFSRORead]") {
   }
 
   auto claim = std::make_shared<minifi::ResourceClaim>(test_file, fsr);
-  auto mm = fsr->mmap(claim, 1024, true);
-  std::string read_string(reinterpret_cast<const char *>(mm->getData()));
+  auto mm = fsr->mmap(claim, 5, true);
+  std::string read_string(reinterpret_cast<const char *>(mm->getData()), 5);
   REQUIRE(read_string == "hello");
 }
 

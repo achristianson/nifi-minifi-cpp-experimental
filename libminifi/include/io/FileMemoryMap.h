@@ -23,6 +23,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <mio/mmap.hpp>
 #include "BaseMemoryMap.h"
 #include "core/logging/LoggerConfiguration.h"
 
@@ -73,7 +74,11 @@ class FileMemoryMap : public io::BaseMemoryMap {
   virtual void unmap();
 
  protected:
-  int fd_;
+
+  void map(const std::string &path, size_t map_size, bool read_only);
+
+  mio::mmap_sink rw_mmap_;
+  mio::mmap_source ro_mmap_;
   void *file_data_;
   std::string path_;
   size_t length_;

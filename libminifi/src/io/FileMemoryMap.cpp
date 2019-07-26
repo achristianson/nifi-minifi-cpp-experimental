@@ -18,16 +18,12 @@
 
 #include "io/FileMemoryMap.h"
 
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
 #include <fstream>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
+#include <mio/mmap.hpp>
 
 namespace org {
 namespace apache {
@@ -37,80 +33,77 @@ namespace io {
 
 FileMemoryMap::FileMemoryMap(const std::string &path, size_t map_size, bool read_only)
     : file_data_(nullptr), path_(path), length_(map_size), read_only_(read_only), logger_(logging::LoggerFactory<FileMemoryMap>::getLogger()) {
-  // open the file
-  if (!read_only) {
-    fd_ = open(path.c_str(), O_RDWR | O_CREAT, 0600);
-  } else {
-    fd_ = open(path.c_str(), O_RDONLY | O_CREAT, 0600);
-  }
+  map(path, map_size, read_only);
+}
 
-  if (fd_ < 0) {
-    throw std::runtime_error("Failed to open for memory mapping: " + path);
-  }
+void FileMemoryMap::map(const std::string &path, size_t map_size, bool read_only) {
+  {
+    // ensure file is at least as big as requested map size
+    std::fstream f(path, std::fstream::in | std::fstream::out | std::fstream::trunc | std::fstream::ate | std::fstream::binary);
+    std::fstream::pos_type file_size = f.tellg();
 
-  // ensure file is at least as big as requested map size
-  if (!read_only) {
-    if (lseek(fd_, map_size, SEEK_SET) < 0) {
-      throw std::runtime_error("Failed to seek " + std::to_string(map_size) + " bytes for mapping: " + path);
-    }
-
-    if (write(fd_, "", 1) < 0) {
-      close(fd_);
-      throw std::runtime_error("Failed to write 0 byte at end of file to expand file: " + path);
+    if (file_size < 0 || (size_t)file_size < map_size) {
+      if (!read_only) {
+        logger_->log_info("Resizing file '%s' to '%d' bytes", path, map_size);
+        f.seekp(map_size - file_size, std::ios::end);
+        f << '\0';
+      } else {
+        throw std::runtime_error("File is smaller than map size and read-only mode is set: " + path);
+      }
     }
   }
 
   // memory map the file
-  if (read_only) {
-    file_data_ = mmap(nullptr, map_size, PROT_READ, MAP_SHARED | MAP_POPULATE, fd_, 0);
-  } else {
-    file_data_ = mmap(nullptr, map_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, fd_, 0);
-  }
+  std::error_code error;
 
-  if (file_data_ == MAP_FAILED) {
-    throw std::runtime_error("Failed to memory map file: " + path);
+  if (read_only) {
+    ro_mmap_ = mio::make_mmap_source(path, error);
+  } else {
+    rw_mmap_ = mio::make_mmap_sink(path, error);
+  }
+  
+  if (error) {
+    throw std::runtime_error("Failed to memory map file '" + path + "' due to: " + error.message());
   }
 }
 
 void FileMemoryMap::unmap() {
-  if (file_data_ != nullptr) {
-    if (munmap(file_data_, length_) != 0) {
-      if (fd_ > 0) {
-        close(fd_);
-      }
-      throw std::runtime_error("Failed to memory unmap file: " + path_);
+  if (read_only_) {
+    ro_mmap_.unmap();
+  } else {
+    std::error_code error;
+    rw_mmap_.sync(error);
+  
+    if (error) {
+      throw std::runtime_error("Failed to unmap memory-mapped file due to: " + error.message());
     }
-  }
 
-  if (fd_ > 0) {
-    close(fd_);
+    rw_mmap_.unmap();
   }
-
-  fd_ = -1;
-  file_data_ = nullptr;
 }
 
-void *FileMemoryMap::getData() { return file_data_; }
+void *FileMemoryMap::getData() {
+  if (read_only_) {
+    return &ro_mmap_[0];
+  } else {
+    return &rw_mmap_[0];
+  }
+}
 
-size_t FileMemoryMap::getSize() { return length_; }
+size_t FileMemoryMap::getSize() {
+  return length_;
+}
 
 void *FileMemoryMap::resize(size_t new_size) {
-  if (file_data_ == nullptr) {
-    throw std::runtime_error("Cannot resize unmapped file: " + path_);
+  if (read_only_) {
+    throw std::runtime_error("Cannot resize read-only mmap");
   }
 
-  auto new_data = mremap(file_data_, length_, new_size, MREMAP_MAYMOVE);
-
-  if (new_data == MAP_FAILED || new_data == nullptr) {
-    if (fd_ > 0) {
-      close(fd_);
-    }
-    throw std::runtime_error("Failed to memory remap file: " + path_);
-  }
-
-  file_data_ = new_data;
+  unmap();
+  map(path_, new_size, false);
   length_ = new_size;
-  return new_data;
+
+  return &rw_mmap_[0];
 }
 
 }  // namespace io
