@@ -116,7 +116,7 @@ void FileMemoryMap::map(const std::string &path, size_t map_size, bool read_only
     rw_mmap_ = mio::make_mmap_sink(path, error);
   }
 #endif
-  
+
   if (error) {
     throw std::runtime_error("Failed to memory map file '" + path + "' due to: " + error.message());
   }
@@ -128,7 +128,7 @@ void FileMemoryMap::unmap() {
   } else {
     std::error_code error;
     rw_mmap_.sync(error);
-  
+
     if (error) {
       throw std::runtime_error("Failed to unmap memory-mapped file due to: " + error.message());
     }
