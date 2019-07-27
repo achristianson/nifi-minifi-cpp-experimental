@@ -18,6 +18,10 @@
 #ifndef LIBMINIFI_INCLUDE_IO_TLS_FILEMEMORYMAP_H_
 #define LIBMINIFI_INCLUDE_IO_TLS_FILEMEMORYMAP_H_
 
+#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
+#include <unistd.h>
+#endif
+
 #include <cstdint>
 #include <iostream>
 #include <memory>
@@ -77,11 +81,13 @@ class FileMemoryMap : public io::BaseMemoryMap {
 
   void map(const std::string &path, size_t map_size, bool read_only);
 
+#if defined(_POSIX_VERSION)
+  int unix_fd_;
+#endif
+  size_t length_;
   mio::mmap_sink rw_mmap_;
   mio::mmap_source ro_mmap_;
-  void *file_data_;
   std::string path_;
-  size_t length_;
   bool read_only_;
 
  private:

@@ -23,6 +23,7 @@
 #include "../TestBase.h"
 #include "ResourceClaim.h"
 #include "core/Core.h"
+#include "io/FileMemoryMap.h"
 #include "properties/Configure.h"
 
 TEST_CASE("MemoryMap Test Test", "[MemoryMapTest1]") { REQUIRE(true); }
@@ -66,6 +67,7 @@ TEST_CASE("MemoryMap FileSystemRepository RO Read", "[MemoryMapTestFSRORead]") {
 TEST_CASE("MemoryMap FileSystemRepository Resize", "[MemoryMapTestFSResize]") {
   auto fsr = std::make_shared<core::repository::FileSystemRepository>();
   TestController testController;
+  LogTestController::getInstance().setTrace<org::apache::nifi::minifi::io::FileMemoryMap>();
   char format[] = "/tmp/testRepo.XXXXXX";
   auto dir = std::string(testController.createTempDirectory(format));
   auto test_file = dir + "/testfile";

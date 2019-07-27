@@ -375,6 +375,20 @@ BENCHMARK_F(VolatileMemoryMapBMFixture, Callback_VolatileRepository_WriteRead_La
   cb_write_read<VolatileMemoryMapBMFixture>(this, st);
 }
 
+BENCHMARK_F(VolatileMemoryMapBMFixture, MemoryMap_VolatileRepository_RandomRead_Large)(benchmark::State &st) {
+  init_repo();
+  set_test_input(33554432, 'x');
+  set_test_expected_output(33554432, 'x');
+  mmap_read_random<VolatileMemoryMapBMFixture>(this, st);
+}
+
+BENCHMARK_F(VolatileMemoryMapBMFixture, Callback_VolatileRepository_RandomRead_Large)(benchmark::State &st) {
+  init_repo();
+  set_test_input(33554432, 'x');
+  set_test_expected_output(33554432, 'x');
+  cb_read_random<VolatileMemoryMapBMFixture>(this, st);
+}
+
 #ifdef ENABLE_ROCKSDB_BENCHMARKS 
 
 BENCHMARK_F(DatabaseMemoryMapBMFixture, MemoryMap_DatabaseRepository_Read_Tiny)(benchmark::State &st) {
